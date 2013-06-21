@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from sunpy.io import fits, jp2
 
-__all__ = ['read_file', 'read_file_header', 'detect_filetype']
+__all__ = ['read_file', 'read_file_header', 'write_file', 'detect_filetype']
 
 # File formats supported by SunPy
 _known_formats = {
@@ -21,7 +21,11 @@ def read_file(filepath):
     return reader.read(filepath)
 
 def read_file_header(filepath):
-    """Reads the header from a given file"""
+    """
+    Reads the header from a given file
+    
+    This should always return a instance of io.header.FileHeader
+    """
     for extension, reader in _known_formats.items():
         if filepath.endswith(extension):
             return reader.get_header(filepath)
@@ -29,6 +33,19 @@ def read_file_header(filepath):
     reader = detect_filetype(filepath)
     return reader.get_header(filepath)  
 
+def write_file(fname, data, header):
+    """
+    Write a file from a data & header pair using one of the defined file types
+    """
+    for extension, reader in _known_formats.items():
+        if fname.endswith(extension):
+            return reader.write(fname, data, header)
+    
+    # If filetype is not apparent from extension, attempt to detect
+    reader = detect_filetype(fname)
+    return reader.write(fname, data, header)
+    
+    
 def detect_filetype(filepath):
     """Attempts to determine the type of data contained in a file"""
     import re
@@ -36,14 +53,17 @@ def detect_filetype(filepath):
     # Open file and read in first two lines
     with open(filepath) as fp:
         line1 = fp.readline()
-        line2 = fp.readline() 
+        line2 = fp.readline()
+        #Some FITS files do not have line breaks at the end of header cards.
+        fp.seek(0)
+        first80 = fp.read(80)
     
     # FITS
     #
     # Checks for "KEY_WORD  =" at beginning of file
-    match = re.match(r"[A-Z0-9_]{0,8} *=", line1)
+    match = re.match(r"[A-Z0-9_]{0,8} *=", first80)
     
-    if match is not None and len(match.string) == 9:
+    if match is not None:
         return fits
     
     # JPEG 2000
