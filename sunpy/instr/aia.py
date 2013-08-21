@@ -23,7 +23,7 @@ def aiaprep(aiamap):
     #I believe this is the target pixel scale for SDO data
     scale_ref = 0.6
     #Extract useful parameters from the map
-    scale_fac = aiamap.scale['x'] / scale_ref
+    scale_factor = aiamap.scale['x'] / scale_ref
     x0 = aiamap.reference_pixel['x']
     y0 = aiamap.reference_pixel['y']
     instrot = aiamap.rotation_angle['y'] #This needs to be pulled out into map.
@@ -38,12 +38,12 @@ def aiaprep(aiamap):
     if ((fovx < 2456.5) or (fovx > 2458.5) or
         (fovy < 2456.5) or (fovy > 2458.5)):
         
-        recentre = False
+        recenter = False
     else:
-        recentre = True
+        recenter = True
 
-    aiamap = aiamap.rotate(np.radians(-instrot), scale=scale_fac,
-                           rotation_centre=(y0,x0), recentre=recentre,
+    aiamap = aiamap.rotate(np.radians(-instrot), scale=scale_factor,
+                           rotation_center=(y0,x0), recenter=recenter,
                            missing=missing_val, interpolation='bicubic',
                            interp_param=-0.5)
     
