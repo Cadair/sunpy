@@ -7,6 +7,7 @@ from collections import Hashable
 from datetime import datetime
 import os.path
 
+from sunpy.database import Database
 from sunpy.database.tables import FitsHeaderEntry, FitsKeyComment, Tag,\
     DatabaseEntry, entries_from_query_result, entries_from_dir,\
     entries_from_file, display_entries, WaveunitNotFoundError
@@ -222,13 +223,13 @@ def test_entries_from_dir():
 def test_entries_from_dir_recursively_true():
     entries = list(
         entries_from_dir(testdir, True, default_waveunit='angstrom'))
-    assert len(entries) == 22
+    assert len(entries) == 25
 
 
 def test_entries_from_dir_recursively_false():
     entries = list(
         entries_from_dir(testdir, False, default_waveunit='angstrom'))
-    assert len(entries) == 5
+    assert len(entries) == 8
 
 
 @pytest.mark.online
@@ -293,6 +294,11 @@ def test_display_entries_missing_entries():
         display_entries([], ['some', 'columns'])
 
 
+def test_display_entries_empty_db():
+    with pytest.raises(TypeError):
+        display_entries(Database('sqlite:///'), ['id'])
+
+
 def test_display_entries_missing_columns():
     with pytest.raises(TypeError):
         display_entries([DatabaseEntry()], [])
@@ -319,7 +325,7 @@ def test_display_entries():
         'observation_time_start', 'observation_time_end', 'instrument', 'size',
         'wavemin', 'path', 'starred', 'tags']
     table = display_entries(entries, columns)
-    assert table == """id source provider physobs      fileid            observation_time_start observation_time_end instrument  size  wavemin path starred tags    
--- ------ -------- -------      ------            ---------------------- -------------------- ----------  ----  ------- ---- ------- ----    
-1  SOHO   SDAC     intensity    /archive/soho/... 2001-01-01 07:00:14    2001-01-01 07:00:21  EIT         259.0 171.0   N/A  No      foo, bar
-2  GONG   NSO      LOS_velocity pptid=11010...    2010-01-01 00:59:00    2010-01-01 01:00:00  Merged gong 944.0 6768.0  N/A  Yes     N/A     """
+    filedir = os.path.dirname(os.path.realpath(__file__))
+    with open(os.path.join(filedir,'test_table.txt'), 'r') as f:
+        stored_table = f.read()
+    assert table == stored_table

@@ -8,7 +8,7 @@ __authors__ = ["Russell Hewett, Stuart Mumford, Keith Hughitt, Steven Christe"]
 __email__ = "stuart@mumford.me.uk"
 
 import os
-from copy import copy
+from copy import deepcopy
 import warnings
 
 import numpy as np
@@ -258,7 +258,7 @@ Dimension:\t [%d, %d]
     def rsun_arcseconds(self):
         """Radius of the sun in arcseconds"""
         return self.meta.get('rsun_obs', self.meta.get('solar_r',
-                                         self.meta.get('radius', constants.average_angular_size)))
+                                         self.meta.get('radius', constants.average_angular_size.to('arcsec').value)))
 
     @property
     def coordinate_system(self):
@@ -460,6 +460,7 @@ Dimension:\t [%d, %d]
         scale_factor_x = (float(self.shape[1]) / dimensions[0])
         scale_factor_y = (float(self.shape[0]) / dimensions[1])
 
+        new_map = deepcopy(self)
         # Update image scale and number of pixels
         new_meta = self.meta.copy()
 
@@ -472,17 +473,19 @@ Dimension:\t [%d, %d]
         new_meta['crval2'] = self.center['y']
 
         # Create new map instance
-        MapType = type(self)
-        return MapType(new_data, new_meta)
-
-    def rotate(self, angle, scale=1.0, rotation_center=None, recenter=True,
+        new_map.data = new_data
+        return new_map
+    
+    def rotate(self, angle=None, rmatrix=None, scale=1.0, rotation_center=None, recenter=True,
                missing=0.0, interpolation='bicubic', interp_param=-0.5):
         """Returns a new rotated, rescaled and shifted map.
 
         Parameters
         ----------
         angle: float
-           The angle to rotate the image by (radians)
+           The angle to rotate the image by (radians). Specify angle or matrix.
+        rmatrix: NxN
+            Linear transformation rotation matrix. Specify angle or matrix.
         scale: float
            A scale factor for the image, default is no scaling
         rotation_center: tuple
@@ -522,7 +525,7 @@ Dimension:\t [%d, %d]
         For more infomation see:
         http://sunpy.readthedocs.org/en/latest/guide/troubleshooting.html#crotate-warning
         """
-
+        assert angle is None or rmatrix is None
         #Interpolation parameter Sanity
         assert interpolation in ['nearest','spline','bilinear','bicubic']
         #Set defaults based on interpolation
@@ -559,10 +562,13 @@ Dimension:\t [%d, %d]
 
         image = self.data.copy()
 
-        #Calulate the parameters for the affline_transform
-        c = np.cos(angle)
-        s = np.sin(angle)
-        mati = np.array([[c, s],[-s, c]]) / scale   # res->orig
+        if not angle is None:
+            #Calulate the parameters for the affline_transform
+            c = np.cos(angle)
+            s = np.sin(angle)
+            mati = np.array([[c, s],[-s, c]]) / scale   # res->orig
+        if not rmatrix is None:
+            mati = rmatrix / scale   # res->orig
         center = np.array([center]).transpose()  # the center of rotn
         shift = np.array([shift]).transpose()    # the shift
         kpos = center - np.dot(mati, (center + shift))
@@ -597,11 +603,11 @@ installed, falling back to the interpolation='spline' of order=3""" ,Warning)
 
         #Return a new map
         #Copy Header
-        meta = self.meta.copy()
+        new_map = deepcopy(self)
 
         # Create new map instance
-        MapType = type(self)
-        return MapType(data, meta)
+        new_map.data = data
+        return new_map
 
     def submap(self, range_a, range_b, units="data"):
         """Returns a submap of the map with the specified range
@@ -677,15 +683,15 @@ installed, falling back to the interpolation='spline' of order=3""" ,Warning)
         new_data = self.data[yslice, xslice].copy()
 
         # Make a copy of the header with updated centering information
-        new_meta = self.meta.copy()
-        new_meta['crpix1'] = self.reference_pixel['x'] - x_pixels[0]
-        new_meta['crpix2'] = self.reference_pixel['y'] - y_pixels[0]
-        new_meta['naxis1'] = new_data.shape[1]
-        new_meta['naxis2'] = new_data.shape[0]
+        new_map = deepcopy(self)
+        new_map.meta['crpix1'] = self.reference_pixel['x'] - x_pixels[0]
+        new_map.meta['crpix2'] = self.reference_pixel['y'] - y_pixels[0]
+        new_map.meta['naxis1'] = new_data.shape[1]
+        new_map.meta['naxis2'] = new_data.shape[0]
 
         # Create new map instance
-        MapType = type(self)
-        return MapType(new_data, new_meta)
+        new_map.data = new_data
+        return new_map
 
     def superpixel(self, dimensions, method='sum'):
         """Returns a new map consisting of superpixels formed from the
@@ -731,7 +737,8 @@ installed, falling back to the interpolation='spline' of order=3""" ,Warning)
 
 
         # Update image scale and number of pixels
-        new_meta = self.meta.copy()
+        new_map = deepcopy(self)
+        new_meta = new_map.meta
 
         # Note that 'x' and 'y' correspond to 1 and 0 in self.shape,
         # respectively
@@ -747,8 +754,8 @@ installed, falling back to the interpolation='spline' of order=3""" ,Warning)
         new_meta['crval2'] = self.center['y']
 
         # Create new map instance
-        MapType = type(self)
-        return MapType(new_data, new_meta)
+        new_map.data = new_data
+        return new_map
 
 # #### Visualization #### #
 
@@ -858,7 +865,7 @@ installed, falling back to the interpolation='spline' of order=3""" ,Warning)
         if not axes:
             axes = plt.gca()
 
-        c_kw = {'radius':self.rsun_arcseconds.value,
+        c_kw = {'radius':self.rsun_arcseconds,
                 'fill':False,
                 'color':'white',
                 'zorder':100
