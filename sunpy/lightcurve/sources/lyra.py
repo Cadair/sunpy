@@ -2,7 +2,6 @@
 """Provides programs to process and analyze PROBA2/LYRA data."""
 from __future__ import absolute_import
 
-import os
 import datetime
 import urlparse
 
@@ -10,9 +9,9 @@ from matplotlib import pyplot as plt
 from astropy.io import fits
 import pandas
 
-import sunpy
 from sunpy.lightcurve import LightCurve 
 from sunpy.time import parse_time
+from sunpy.util.odict import OrderedDict
 
 __all__ = ['LYRALightCurve']
 
@@ -125,6 +124,6 @@ class LYRALightCurve(LightCurve):
             table[col.name] = fits_record.field(i + 1)
 
         # Return the header and the data
-        return hdulist[0].header, pandas.DataFrame(table, index=times)
+        return OrderedDict(hdulist[0].header), pandas.DataFrame(table, index=times)
 
 
