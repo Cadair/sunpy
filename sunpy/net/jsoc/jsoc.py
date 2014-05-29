@@ -18,7 +18,8 @@ from sunpy import config
 from sunpy.time import parse_time, TimeRange
 from sunpy.net.download import Downloader
 from sunpy.net.vso.vso import Results
-
+from sunpy.net.attr import and_
+from sunpy.net.jsoc.attrs import walker
 __all__ = ['JSOCClient']
 
 JSOC_URL = 'http://jsoc.stanford.edu/cgi-bin/ajax/jsoc_fetch'
@@ -62,7 +63,7 @@ class JSOCClient(object):
     of the download.
     """
 
-    def jsoc_query(self, start_time, end_time, series, **kwargs):
+    def jsoc_query(self, *query, **kwargs):
         """
         Build a JSOC query and submit it to JSOC for processing.
 
@@ -99,27 +100,35 @@ class JSOCClient(object):
         # A little (hidden) debug feature
         return_resp = kwargs.pop('return_resp', False)
 
-        start_time = self._process_time(start_time)
-        end_time = self._process_time(end_time)
-
-        # Do a multi-request
-        responses = self._multi_request(start_time, end_time, series, **kwargs)
-
-        for i, response in enumerate(responses):
-            #TODD: catch non 200 return
-            if response.json()['status'] != 2:
-                warnings.warn(
-                Warning("Query {0} retuned status {1} with error {2}".format(i,
+        #start_time = self._process_time(start_time)
+        #end_time = self._process_time(end_time)
+        return_response = []
+        return_reqid = []
+        query = and_(*query)
+        for block in walker.create(query):
+	    iargs = kwargs.copy()
+	    iargs.update(block)
+	    
+	    # Do a multi-request for each query block
+            responses = self._multi_request(**iargs)
+               
+            for i, response in enumerate(responses):
+                #TODD: catch non 200 return
+                if response.json()['status'] != 2:
+                    warnings.warn(
+                    Warning("Query {0} retuned status {1} with error {2}".format(i,
                                                      response.json()['status'],
                                                      response.json()['error'])))
-                responses.pop(i)
-        #Extract the IDs from the JSON
-        requestIDs = [response.json()['requestid'] for response in responses]
+                    responses.pop(i)
+            #Extract the IDs from the JSON
+            requestIDs = [response.json()['requestid'] for response in responses]
+            return_reqid.append(requestIDs)
+	    return_response.append(responses)
 
         if return_resp:
-            return responses
+            return return_response
 
-        return requestIDs
+        return return_reqid
 
     def check_request(self, requestIDs):
         """
@@ -362,11 +371,18 @@ class JSOCClient(object):
 
         return r, r.json()
 
-    def _multi_request(self, start_time, end_time, series, **kwargs):
+    def _multi_request(self, **kwargs):
         """
         Make a series of requests to avoid the 100GB limit
         """
-        tr = TimeRange(start_time, end_time)
+	start_time = kwargs.pop('start_time',None)
+	end_time = kwargs.pop('end_time',None)
+	series = kwargs.pop('series',None)
+	if any(x is None for x in (start_time, end_time, series)):
+	    return []
+        start_time = self._process_time(start_time)
+	end_time = self._process_time(end_time)
+	tr = TimeRange(start_time, end_time)
         returns = []
 
         response, json_response = self._send_jsoc_request(start_time, end_time, series, **kwargs)
