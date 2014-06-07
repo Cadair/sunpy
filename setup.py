@@ -56,6 +56,8 @@ def install(setup): #pylint: disable=W0621
     from setuptools import find_packages
     #Crotate Module
     from distutils.core import Extension
+    from distutils.core import setup
+    from Cython.Distutils import build_ext
     from os.path import dirname, join
     cwd = dirname(__file__)
     try:
@@ -82,19 +84,10 @@ def install(setup): #pylint: disable=W0621
                             )
 
         module_ana = 'sunpy.io._pyana'
-        sourcefiles_ana = [join(cwd, 'sunpy', 'io', 'src', 'ana', 'anacompress.c'),
-                       join(cwd, 'sunpy', 'io', 'src', 'ana', 'anadecompress.c'),
-                       join(cwd, 'sunpy', 'io', 'src', 'ana', 'anarw.c'),
-                       join(cwd, 'sunpy', 'io', 'src', 'ana', 'testrw.c'),
-                       join(cwd, 'sunpy', 'io', 'src', 'ana', '_pyana.c')]
+        sourcefiles_ana =  ['sunpy/io/ana.pyx']
+#
+        ana = Extension(module_ana, sources = sourcefiles_ana)
 
-        ana = Extension(module_ana,
-                            sources = sourcefiles_ana,
-                            libraries = libs,
-                            extra_compile_args = gcc_args,
-                            include_dirs =
-                            [np.get_include(), join(cwd, 'sunpy', 'io', 'src')]
-                            )
     ext_modules = []
     if 'crotate' in locals():
         ext_modules.append(crotate)
@@ -107,6 +100,7 @@ def install(setup): #pylint: disable=W0621
 	author="Steven Christe, Russell Hewett, Keith Hughitt, Jack Ireland, Florian Mayer, Stuart Mumford,  Albert Shih, David Perez-Suarez et. al",
         author_email="sunpy@googlegroups.com",
         classifiers=CLASSIFIERS,
+        cmdclass = {'build_ext': build_ext},
         description=DOCLINES[0],
         install_requires=[
             'numpy>1.7.1',

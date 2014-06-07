@@ -18,6 +18,7 @@
 #define M_TM_INPRO       0  
 #define M_TM_INFUN      -1
 
+typedef struct fzhead fzhead_t;
 
 // Helper routines
 void bswapi64(int64_t *x, int n);
