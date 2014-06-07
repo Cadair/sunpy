@@ -83,7 +83,7 @@ def get_header(filename, debug=False):
     if _pyana is None:
         raise ImportError("C extension for ANA is missing, please rebuild")# pragma: no cover
 
-    data = _pyana.fzread(filename, debug)
+    data = _pyana.header_read(filename)
     return [FileHeader(data['header'])]
 
 def write(filename, data, comments=False, compress=1, debug=False):
@@ -120,3 +120,8 @@ def write(filename, data, comments=False, compress=1, debug=False):
         return _pyana.fzwrite(filename, data, compress, comments, debug)
     else:
         return _pyana.fzwrite(filename, data, compress, '', debug)
+
+if __name__ == '__main__':
+    afile = '/home/nabobalis/GitRepos/sunpy/sunpy/data/test/test_ana.fz'
+    header = get_header(afile)
+    
