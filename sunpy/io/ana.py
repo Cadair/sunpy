@@ -18,16 +18,12 @@ Copyright (c) 2009--2011 Tim van Werkhoven.
 from __future__ import absolute_import
 import os
 
-try:
-    from sunpy.io import _pyana
-except ImportError: # pragma: no cover
-    _pyana = None # pragma: no cover
-
+from sunpy.io import _pyana
 from sunpy.io.header import FileHeader
 
 __all__ = ['read', 'get_header', 'write']
 
-def read(filename, debug=False):
+def read(filename):
     """
     Loads an ANA file and returns the data and a header in a list of (data,
     header) tuples.
@@ -55,7 +51,7 @@ def read(filename, debug=False):
     if _pyana is None:
         raise ImportError("C extension for ANA is missing, please rebuild") # pragma: no cover
 
-    data = _pyana.fzread(filename, debug)
+    data = _pyana.fzread(filename)
     return [(data['data'],FileHeader(data['header']))]
 
 def get_header(filename, debug=False):

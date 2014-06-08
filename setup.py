@@ -84,7 +84,7 @@ def install(setup): #pylint: disable=W0621
                             )
 
         module_ana = 'sunpy.io._pyana'
-        sourcefiles_ana =  ['sunpy/io/ana.pyx']
+        sourcefiles_ana =  ['sunpy/io/cython_ana.pyx']
 #
         ana = Extension(module_ana, sources = sourcefiles_ana)
 
