@@ -51,7 +51,7 @@ def read(filename):
     if _pyana is None:
         raise ImportError("C extension for ANA is missing, please rebuild") # pragma: no cover
 
-    data = _pyana.fzread(filename)
+    data = _pyana.read_header(filename)
     return [(data['data'],FileHeader(data['header']))]
 
 def get_header(filename, debug=False):
@@ -79,7 +79,7 @@ def get_header(filename, debug=False):
     if _pyana is None:
         raise ImportError("C extension for ANA is missing, please rebuild")# pragma: no cover
 
-    data = _pyana.header_read(filename)
+    data = _pyana.read_header(filename)
     return [FileHeader(data['header'])]
 
 def write(filename, data, comments=False, compress=1, debug=False):

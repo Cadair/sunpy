@@ -24,3 +24,4 @@ docs
 htmlcov
 result.xml
 sunpy/version.py
+sunpy/io/cython_ana.c
