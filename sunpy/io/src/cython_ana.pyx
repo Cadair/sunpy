@@ -14,7 +14,7 @@ cdef extern from "ana/anarw.h":
 #    ana_fzwrite(file_name):
 
 def read_header(file_name):
-    print file_name
+    pass
     
 def read(filename):
     pass
