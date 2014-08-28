@@ -4,6 +4,9 @@ SunPy: Python for Solar Physics
 The SunPy project is an effort to create an open-source software library for
 solar physics using the Python programming language.
 """
+
+import glob
+
 DOCLINES = __doc__.split("\n")
 
 CLASSIFIERS = [
@@ -57,6 +60,7 @@ def install(setup): #pylint: disable=W0621
     #Crotate Module
     from distutils.core import Extension
     from os.path import dirname, join
+    from Cython.Build import cythonize
 
     try:
         import numpy as np
@@ -67,13 +71,15 @@ def install(setup): #pylint: disable=W0621
         libs = ['m']
         gcc_args = ['-std=c99', '-O3']
 
-        module_ana = 'sunpy.io._pyana'
-        sourcefiles_ana =  ['sunpy/io/src/cython_ana.pyx']
-        ana = Extension(module_ana, sources = sourcefiles_ana)
+        module_ana = 'sunpy.io.ana_'
+        sourcefiles_ana =  ['sunpy/io/ana_.pyx'] + glob.glob('sunpy/io/src/ana/*c')
+        print sourcefiles_ana
+        ana = [Extension(module_ana, sources=sourcefiles_ana, include_dirs=[np.get_include(), 'sunpy/io/src/ana/'])]
 
-    ext_modules = []
-    if 'ana' in locals():
-        ext_modules.append(ana)
+    ext_modules = cythonize(ana)
+    print ext_modules
+#    if 'ana' in locals():
+#        ext_modules.append(ana)
 
     write_version_py()
 
