@@ -6,12 +6,12 @@
 #define ANA_LITTLE_ENDIAN    0
 #define ANA_BIG_ENDIAN       1
 
-#define INT8	         0
-#define INT16	         1
-#define INT32	         2
-#define FLOAT32	         3
-#define FLOAT64	         4
-#define INT64	         5
+#define INT8          0
+#define INT16         1
+#define INT32         2
+#define FLOAT32       3
+#define FLOAT64       4
+#define INT64         5
 
 #define ANA2PYTHON_T {PyArray_INT8, PyArray_INT16, PyArray_INT32, PyArray_FLOAT32, PyArray_FLOAT64, PyArray_INT64}
 
