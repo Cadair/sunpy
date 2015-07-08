@@ -17,10 +17,10 @@ throughout the docs. These files have names like
 To create the sample `sunpy.map.sources.sdo.AIAMap` type the following into your
 interactive Python shell::
 
-    import sunpy
-    import sunpy.map
-    import sunpy.data.sample
-    my_map = sunpy.map.Map(sunpy.data.sample.AIA_171_IMAGE)
+    >>> import sunpy
+    >>> import sunpy.map
+    >>> import sunpy.data.sample
+    >>> my_map = sunpy.map.Map(sunpy.data.sample.AIA_171_IMAGE)
 
 If you have not downloaded the data already you should get an error and some
 instruction on how to download the sample data.

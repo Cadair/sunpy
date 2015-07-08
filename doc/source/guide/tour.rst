@@ -34,14 +34,14 @@ Making a map of your data is the normally the first step in using SunPy to work 
 
 SunPy supports many different data products from various sources 'out of the box' we
 shall use SDO's AIA instrument as an example in this tutorial. The general way to create
-a map from one of the supported data products is with the `Map()` class from the `map` submodule.
+a map from one of the supported data products is with the ``Map()`` class from the `sunpy.map` submodule.
 
-`Map()` takes either a filename, a list of filenames or a data array and header pair. We can test map with::
+``Map()`` takes either a filename, a list of filenames or a data array and header pair. We can test map with::
 
     import sunpy.map
     aia = sunpy.map.Map(sunpy.data.sample.AIA_171_IMAGE)
 
-This returns a map named `aia` which can be manipulated with standard SunPy map commands.
+This returns a map named ``aia`` which can be manipulated with standard SunPy map commands.
 For more information about maps checkout the :doc:`map guide <data_types/maps>`.
 
 Lightcurve
