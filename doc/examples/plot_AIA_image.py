@@ -22,5 +22,5 @@ import sunpy.data.sample
 ################################################################################
 # Now, create a SunPy map from the sample data, and create a quick look plot.
 
-aia_map = sunpy.map.Map(sunpy.data.sample.AIA_171_ROLL_IMAGE)
+aia_map = sunpy.map.Map(sunpy.data.sample.AIA_171_IMAGE)
 aia_map.peek()
