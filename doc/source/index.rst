@@ -10,6 +10,7 @@ You can find the official SunPy website at
   :maxdepth: 2
 
   guide/index.rst
+  auto_examples/index
   code_ref/index.rst
   dev
   bugs

@@ -75,6 +75,10 @@ exclude_patterns.append('_templates')
 rst_epilog += """
 """
 
+# -- Gallery Configuration ----------------------------------------------------
+
+extensions += ['sphinx_gallery.gen_gallery']
+
 # -- Project information ------------------------------------------------------
 
 # This does not *have* to match the package name, but typically does
