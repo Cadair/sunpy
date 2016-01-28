@@ -60,3 +60,6 @@ dependencies:
 - zlib=1.2.8=0
 - glymur=0.8.2=py27_0
 - openjpeg=2.1.0=py27_0
+- pip:
+  - sphinx-gallery==0.1.0
+  - sphinx-rtd-theme==0.1.7
