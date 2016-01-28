@@ -15,11 +15,6 @@ goes = GOESLightCurve.from_yesterday()
 fig = goes.peek()
 
 ################################################################################
-# To see what time-range the data is for, we can use the `time_range` method.
-
-print(goes.time_range())
-
-################################################################################
 # The underlying data is stored as a
 # `pandas DataFrame <http://pandas.pydata.org/pandas-docs/dev/dsintro.html>`_ object.
 
