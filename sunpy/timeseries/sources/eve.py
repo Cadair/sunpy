@@ -13,12 +13,13 @@ import matplotlib.pyplot as plt
 from pandas.io.parsers import read_csv
 from os.path import basename
 
-from sunpy.lightcurve import LightCurve
+from sunpy.timeseries import GenericTimeSeries
+from astropy import units as u
 
 __all__ = ['EVELightCurve']
 
 
-class EVELightCurve(LightCurve):
+class EVELightCurve(GenericTimeSeries):
     """
     SDO EVE LightCurve for level 0CS data.
 
@@ -42,13 +43,11 @@ class EVELightCurve(LightCurve):
 
     Examples
     --------
-    >>> import sunpy.lightcurve
-    >>> import sunpy.data.test
+    >>> import sunpy.timeseries
+    >>> import sunpy.data.sample
 
-    >>> eve = sunpy.lightcurve.EVELightCurve.create()
-    >>> eve = sunpy.lightcurve.EVELightCurve.create('2012/06/20')
-    >>> eve = sunpy.lightcurve.EVELightCurve.create(sunpy.data.test.EVE_AVERAGES_CSV)
-    >>> eve = sunpy.lightcurve.EVELightCurve.create("http://lasp.colorado.edu/eve/data_access/quicklook/quicklook_data/L0CS/LATEST_EVE_L0CS_DIODES_1m.txt")
+    >>> eve = sunpy.timeseries.TimeSeries(sunpy.data.sample.EVE_LIGHTCURVE, source='EVE')
+    >>> eve = sunpy.timeseries.TimeSeries("http://lasp.colorado.edu/eve/data_access/quicklook/quicklook_data/L0CS/LATEST_EVE_L0CS_DIODES_1m.txt", source='EVE')
     >>> eve.peek(subplots=True)    # doctest: +SKIP
 
     References
@@ -61,21 +60,21 @@ class EVELightCurve(LightCurve):
     """
 
     def peek(self, column=None, **kwargs):
-        """Plots the light curve in a new figure. An example is shown below.
+        """Plots the time series in a new figure. An example is shown below.
 
         .. plot::
 
-            import sunpy.lightcurve
+           import sunpy.timeseries
             from sunpy.data.sample import EVE_LIGHTCURVE
-            eve = sunpy.lightcurve.EVELightCurve.create(EVE_LIGHTCURVE)
+            eve = sunpy.timeseries.TimeSeries(EVE_LIGHTCURVE)
             eve.peek(subplots=True)
 
         Parameters
         ----------
-        column : str
+        column : `str`
             The column to display. If None displays all.
 
-        **kwargs : dict
+        **kwargs : `dict`
             Any additional plot arguments that should be used
             when plotting.
 
@@ -106,23 +105,8 @@ class EVELightCurve(LightCurve):
         figure.show()
         return figure
 
-    @staticmethod
-    def _get_default_uri():
-        """Loads latest level 0CS if no other data is specified"""
-        return "http://lasp.colorado.edu/eve/data_access/evewebdata/quicklook/L0CS/LATEST_EVE_L0CS_DIODES_1m.txt"
-
-    @staticmethod
-    def _get_url_for_date(date):
-        """Returns a URL to the EVE data for the specified date
-
-            @NOTE: currently only supports downloading level 0 data
-            .TODO: No data available prior to 2010/03/01!
-        """
-        base_url = 'http://lasp.colorado.edu/eve/data_access/evewebdata/quicklook/L0CS/SpWx/'
-        return base_url + date.strftime('%Y/%Y%m%d') + '_EVE_L0CS_DIODES_1m.txt'
-
     @classmethod
-    def _parse_csv(cls, filepath):
+    def _parse_file(cls, filepath):
         """Parses an EVE CSV file."""
         cls._filename = basename(filepath)
         with codecs.open(filepath, mode='rb', encoding='ascii') as fp:
@@ -138,6 +122,7 @@ class EVELightCurve(LightCurve):
     @staticmethod
     def _parse_average_csv(fp):
         """Parses an EVE Averages file."""
+        print('\nin _parse_average_csv()')
         return "", read_csv(fp, sep=",", index_col=0, parse_dates=True)
 
     @staticmethod
@@ -183,10 +168,6 @@ class EVELightCurve(LightCurve):
         year = int(date_parts[0])
         month = int(date_parts[2])
         day = int(date_parts[3])
-        #last_pos = fp.tell()
-        #line = fp.readline()
-        #el = line.split()
-        #len
 
         # function to parse date column (HHMM)
         parser = lambda x: datetime(year, month, day, int(x[0:2]), int(x[2:4]))
@@ -195,5 +176,29 @@ class EVELightCurve(LightCurve):
         if is_missing_data :   #If missing data specified in header
             data[data == float(missing_data_val)] = numpy.nan
 
-        # data.columns = fields
-        return meta, data
+        # Add the units data
+        units = OrderedDict([('XRS-B proxy', u.dimensionless_unscaled),
+                             ('XRS-A proxy', u.dimensionless_unscaled),
+                             ('SEM proxy', u.dimensionless_unscaled),
+                             ('0.1-7ESPquad', u.W/u.m**2),
+                             ('17.1ESP', u.W/u.m**2),
+                             ('25.7ESP', u.W/u.m**2),
+                             ('30.4ESP', u.W/u.m**2),
+                             ('36.6ESP', u.W/u.m**2),
+                             ('darkESP', u.ct),
+                             ('121.6MEGS-P', u.W/u.m**2),
+                             ('darkMEGS-P', u.ct),
+                             ('q0ESP', u.dimensionless_unscaled),
+                             ('q1ESP', u.dimensionless_unscaled),
+                             ('q2ESP', u.dimensionless_unscaled),
+                             ('q3ESP', u.dimensionless_unscaled),
+                             ('CMLat', u.W/u.m**2),
+                             ('CMLon', u.W/u.m**2)])
+        # Todo: check units used.
+        return data, meta, units
+
+    @classmethod
+    def is_datasource_for(cls, **kwargs):
+        """Determines if header corresponds to an EVE image"""
+        #return header.get('instrume', '').startswith('')
+        return kwargs.get('source', '').startswith('EVE')
