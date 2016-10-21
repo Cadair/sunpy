@@ -31,7 +31,7 @@ from sunpy.image.transform import affine_transform
 from sunpy.image.rescale import reshape_image_to_4d_superpixel
 from sunpy.image.rescale import resample as sunpy_image_resample
 
-from .nddata_compat import NDDataCompat as NDData
+from astropy.nddata import NDData
 
 TIME_FORMAT = config.get("general", "time_format")
 Pair = namedtuple('Pair', 'x y')
