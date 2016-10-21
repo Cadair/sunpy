@@ -222,7 +222,10 @@ scale:\t\t {scale}
            scale=u.Quantity(self.scale),
            tmf=TIME_FORMAT) + self.data.__repr__())
                                                                         
-    def _modified_copy(self, data, meta, **kwargs):
+    def _modified_copy(self, data, meta, plot_settings=None, **kwargs):
+        """
+        Method to create new modified map object with the required changes
+        """
         return GenericMap(data, meta, **kwargs)
 
     @property
@@ -497,7 +500,7 @@ scale:\t\t {scale}
                                self.spatial_units.y + y).to(self.spatial_units.y)).value
 
         #Create new map with the modification
-        new_map = self._modified_copy(self, self.data, new_meta)
+        new_map = self._modified_copy(self, self.data, new_meta, self.plot_settings)
 
         new_map._shift = Pair(self.shifted_value.x + x,
                               self.shifted_value.y + y)
@@ -861,7 +864,7 @@ scale:\t\t {scale}
         new_meta['crval2'] = self.center.y.value
 
         # Create new map instance
-        new_map = self._modified_copy(self, new_data, new_meta)
+        new_map = self._modified_copy(self, new_data, new_meta, self.plot_settings)
         return new_map
 
     def rotate(self, angle=None, rmatrix=None, order=4, scale=1.0,
@@ -1057,7 +1060,7 @@ scale:\t\t {scale}
         new_meta.pop('CD2_2', None)
 
         #Create new map with the modification
-        new_map = self._modified_copy(self, new_data, new_meta)
+        new_map = self._modified_copy(self, new_data, new_meta, self.plot_settings)
         return new_map
 
     def submap(self, range_a, range_b):
@@ -1207,7 +1210,7 @@ scale:\t\t {scale}
             new_mask = self.mask[yslice, xslice].copy()
 
         #Create new map with the modification
-        new_map = self._modified_copy(self, new_data, new_meta, mask=new_mask)
+        new_map = self._modified_copy(self, new_data, new_meta, self.plot_settings, mask=new_mask)
         return new_map
 
     @u.quantity_input(dimensions=u.pixel, offset=u.pixel)
@@ -1294,7 +1297,7 @@ scale:\t\t {scale}
             new_mask = None
 
         #Create new map with the modified data
-        new_map = self._modified_copy(self, new_data, new_meta, mask=new_mask)
+        new_map = self._modified_copy(self, new_data, new_meta, self.plot_settings, mask=new_mask)
         return new_map
 
 # #### Visualization #### #
