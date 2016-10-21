@@ -1208,9 +1208,11 @@ scale:\t\t {scale}
         # Create new map instance
         if self.mask is not None:
             new_mask = self.mask[yslice, xslice].copy()
-
+            #Create new map with the modification
+            new_map = self._modified_copy(new_data, new_meta, self.plot_settings, mask=new_mask)
+            return new_map
         #Create new map with the modification
-        new_map = self._modified_copy(new_data, new_meta, self.plot_settings, mask=new_mask)
+        new_map = self._modified_copy(new_data, new_meta, self.plot_settings)
         return new_map
 
     @u.quantity_input(dimensions=u.pixel, offset=u.pixel)
