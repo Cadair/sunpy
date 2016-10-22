@@ -226,7 +226,10 @@ scale:\t\t {scale}
         """
         Method to create new modified map object with the required changes
         """
-        return GenericMap(data, meta, **kwargs)
+        new_map = type(self)(data, meta, **kwargs)
+        if plot_settings:
+            new_map.plot_settings = plot_settings
+        return new_map
 
     @property
     def wcs(self):
@@ -968,7 +971,6 @@ scale:\t\t {scale}
 
         # Copy meta data
         new_meta = self.meta.copy()
-
         if angle is not None:
             # Calculate the parameters for the affine_transform
             c = np.cos(np.deg2rad(angle))
