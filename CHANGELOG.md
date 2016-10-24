@@ -36,6 +36,7 @@ Latest
   Longitude follows the convention of going from 0-360 degrees.
 * Fix Map parsing of some header values to allow valid float strings like 'nan'
   and 'inf'.
+* SunPy now requires WCSAxes and Map.draw_grid only works with WCSAxes.
 
 0.7.0
 -----
