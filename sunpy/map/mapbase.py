@@ -999,7 +999,7 @@ scale:\t\t {scale}
 
         # Convert the axis of rotation from data coordinates to pixel coordinates
         pixel_rotation_center = u.Quantity(self.data_to_pixel(*rotation_center,
-                                                                 origin=0)).value
+                                                               origin=0)).value
         if recenter:
             pixel_center = pixel_rotation_center
         else:
@@ -1007,11 +1007,11 @@ scale:\t\t {scale}
 
         # Apply the rotation to the image data
         new_data = affine_transform(new_data.T,
-                                        np.asarray(rmatrix),
-                                        order=order, scale=scale,
-                                        image_center=np.flipud(pixel_center),
-                                        recenter=recenter, missing=missing,
-                                        use_scipy=use_scipy).T
+                                    np.asarray(rmatrix),
+                                    order=order, scale=scale,
+                                    image_center=np.flipud(pixel_center),
+                                    recenter=recenter, missing=missing,
+                                    use_scipy=use_scipy).T
 
         if recenter:
             new_reference_pixel = pixel_array_center
