@@ -427,7 +427,7 @@ class DatabaseEntry(Base):
             self.tags == other.tags)
 
     def _compare_attributes(self, other, attribute_list):
-        """Compare a given list of attributes of two :class:`DatabaseEntry` 
+        """Compare a given list of attributes of two :class:`DatabaseEntry`
         instances and return True if all of them match.
 
         Parameters
@@ -671,21 +671,39 @@ def entries_from_file(file, default_waveunit=None):
             # NOTE: the key DATE-END or DATE_END is not part of the official
             # FITS standard, but many FITS files use it in their header
             elif key in ('DATE-END', 'DATE_END'):
-                try:
-                    entry.observation_time_end = parse_time(value)
-                except ValueError:
+                # Check if we have seperate end time entry in the header
+                if 'TIME-END' in header:
+                    # given both end date and end time we combine them (for GOES)
+                    try:
+                        tstr = value + ' ' + header['TIME-END']
+                        entry.observation_time_end = datetime.strptime(tstr, "%d/%m/%Y %H:%M:%S.%f")
+                    except ValueError:
+                        tstr = value + ' ' + header['TIME-END']
+                        entry.observation_time_end = datetime.strptime(tstr, "%d/%m/%y %H:%M:%S")
+                else:
                     if 'goes' in instrument_name.lower():
-                        entry.observation_time_end = datetime.strptime(value,
-                            '%d/%m/%Y')
-             #       else:
-             #          raise
+                        entry.observation_time_end = datetime.strptime(value + ' 23:59:59', "%d/%m/%y %H:%M:%S")
+                    else:
+                        entry.observation_time_end = parse_time(value)
             elif key in ('DATE-OBS', 'DATE_OBS'):
-                try:
-                    entry.observation_time_start = parse_time(value)
-                except ValueError:
-                        if 'goes' in instrument_name.lower():
-                            entry.observation_time_start = datetime.strptime(value,
-                                '%d/%m/%Y')
+                # Check if we have seperate start time entry in the header
+                if 'TIME-OBS' in header:
+                    # given both start date and start time we combine them (for GOES)
+                    try:
+                        tstr = value + ' ' + header['TIME-OBS']
+                        entry.observation_time_start = datetime.strptime(tstr, "%d/%m/%Y %H:%M:%S.%f")
+                    except ValueError:
+                        # for older gies files GOES we need
+                        tstr = value + ' ' + header['TIME-OBS']
+                        entry.observation_time_start = datetime.strptime(tstr, "%d/%m/%y %H:%M:%S")
+                else:
+                    try:
+                        entry.observation_time_start = parse_time(value)
+                    except ValueError:
+                        # For some HDUs from GOES old data
+                        entry.observation_time_end = datetime.strptime(value, "%d/%m/%y")
+
+
             #            else:
             #                raise
         yield entry
