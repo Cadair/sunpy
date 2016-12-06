@@ -27,8 +27,10 @@ from sunpy.database import attrs
 from sunpy.net import vso, hek
 from sunpy.data.test.waveunit import waveunitdir
 from sunpy.io import fits
+from sunpy.io.file_tools import UnrecognizedFileTypeError
 from sunpy.extern.six.moves import range
 from sunpy.extern.six.moves import configparser
+from sunpy.net import Fido, attrs as net_attrs
 
 import sunpy.data.test
 
@@ -49,6 +51,52 @@ def database_using_lfucache():
 @pytest.fixture
 def database():
     return Database('sqlite:///:memory:')
+
+
+@pytest.fixture
+def fido_search_result():
+    # A search query with responses from all instruments
+    # No JSOC query
+    return Fido.search(
+        net_attrs.Time("2012/1/1", "2012/1/2"),
+        net_attrs.Instrument('lyra')|net_attrs.Instrument('eve')|
+        net_attrs.Instrument('goes')|net_attrs.Instrument('noaa-indices')|
+        net_attrs.Instrument('noaa-predict')|net_attrs.Instrument('norh')|
+        net_attrs.Instrument('rhessi')|
+        (net_attrs.Instrument('EVE')&net_attrs.Level(0))
+        )
+
+
+@pytest.fixture
+def fido_search_result_list():
+    #Contains a list of search results from different clients
+    fido_sr = []
+
+    fido_sr.append(Fido.search(net_attrs.Time("2012/1/1", "2012/1/2"),
+        net_attrs.Instrument('lyra')))
+
+    fido_sr.append(Fido.search(net_attrs.Time("2012/1/1", "2012/1/2"),
+        net_attrs.Instrument('goes')))
+
+    fido_sr.append(Fido.search(net_attrs.Time("2012/1/1", "2012/1/2"),
+        net_attrs.Instrument('rhessi')))
+
+    fido_sr.append(Fido.search(net_attrs.Time("2012/2/1T00:00:00", "2012/2/1T01:00:00"),
+        net_attrs.Instrument('eve')))
+
+    fido_sr.append(Fido.search(net_attrs.Time("2012/1/1", "2012/1/2"),
+        net_attrs.Instrument('noaa-indices')))
+
+    fido_sr.append(Fido.search(net_attrs.Time("2012/1/1", "2012/1/2"),
+        net_attrs.Instrument('noaa-predict')))
+
+    fido_sr.append(Fido.search(net_attrs.Time("2012/1/1", "2012/1/2"),
+        net_attrs.Instrument('norh')))
+
+    fido_sr.append(Fido.search(net_attrs.Time("2012/1/1", "2012/1/2"),
+        net_attrs.Instrument('EVE'), net_attrs.Level(0)))
+
+    return fido_sr
 
 
 @pytest.fixture
@@ -423,6 +471,52 @@ def test_add_entry_from_hek_qr(database):
 
 
 @pytest.mark.online
+def test_vso_query_block_caching(database, download_qr, tmpdir):
+
+    assert len(database) == 0
+
+    """Download for all query response blocks and save the length
+     of database in num_of_fits_headers"""
+    database.download_from_vso_query_result(
+        download_qr, path=str(tmpdir.join('{file}.fits')))
+    fits_pattern = str(tmpdir.join('*.fits'))
+    num_of_fits_headers = sum(
+        len(fits.get_header(file)) for file in glob.glob(fits_pattern))
+
+    assert len(database) == num_of_fits_headers > 0
+
+    """Emptying the database"""
+    database.clear()
+    database.commit()
+
+    """Only downloading for the first query response block"""
+    database.download_from_vso_query_result(
+        download_qr[:1], path=str(tmpdir.join('{file}.type1')))
+    fits_pattern = str(tmpdir.join('*.type1'))
+    num_of_fits_headers_1 = sum(
+        len(fits.get_header(file)) for file in glob.glob(fits_pattern))
+
+    assert len(database) == num_of_fits_headers_1 > 0
+
+    """Downloading for all query response blocks"""
+    database.download_from_vso_query_result(
+        download_qr, path=str(tmpdir.join('{file}.type2')))
+    fits_pattern = str(tmpdir.join('*.type2'))
+    num_of_fits_headers_2 = sum(
+        len(fits.get_header(file)) for file in glob.glob(fits_pattern))
+
+    """Final length of the database should be the same as num_of_fits_headers.
+    This is done to ensure that the first query response block's files weren't
+    redownloaded. If they were redownloaded then length will be greater than
+    num_of_fits_headers as new entries are added to the database in case of a
+    download."""
+
+    assert len(database) == num_of_fits_headers_1 + num_of_fits_headers_2 > 0
+
+    assert num_of_fits_headers_1+num_of_fits_headers_2 == num_of_fits_headers
+
+
+@pytest.mark.online
 def test_download_from_qr(database, download_qr, tmpdir):
     assert len(database) == 0
     database.download_from_vso_query_result(
@@ -437,6 +531,48 @@ def test_download_from_qr(database, download_qr, tmpdir):
     assert len(database) == 0
     database.redo()
     assert len(database) == num_of_fits_headers > 0
+
+
+@pytest.mark.online
+def test_download_from_fido_search_result(database,
+    fido_search_result_list, tmpdir):
+
+    file_list = glob.glob(str(tmpdir.join("*")))
+
+    for file in file_list:
+        os.remove(file)
+
+    for sr in fido_search_result_list:
+        assert len(database) == 0
+
+        database.download_from_fido_search_result(
+            sr, path=str(tmpdir.join('{file}')))
+        file_list = glob.glob(str(tmpdir.join("*")))
+        num_headers = 0
+
+        for file in file_list:
+            try:
+                num_headers += len(fits.get_header(file))
+            except IOError or UnrecognizedFileTypeError:
+                # All files downloaded won't be FITS files.
+                # IOError will happen while trying to read non-FITS noaa-indices files.
+                num_headers += 1
+
+        assert len(database) == num_headers and num_headers > 0
+
+        for entry in database:
+            assert os.path.dirname(entry.path) == str(tmpdir)
+        database.undo()
+        assert len(database) == 0
+        database.redo()
+        assert len(database) == num_headers and num_headers > 0
+
+        for file in file_list:
+            os.remove(file)
+
+        database.clear()
+
+    assert len(database) == 0
 
 
 @pytest.mark.online
@@ -466,6 +602,49 @@ def test_add_entries_from_qr_ignore_duplicates(database, query_result):
     assert len(database) == 10
     database.add_from_vso_query_result(query_result, True)
     assert len(database) == 20
+
+
+@pytest.mark.online
+def test_add_entry_fido_search_result(database, fido_search_result):
+    assert len(database) == 0
+    database.add_from_fido_search_result(fido_search_result)
+    assert len(database) == 65
+    database.undo()
+    assert len(database) == 0
+    database.redo()
+    assert len(database) == 65
+
+
+@pytest.mark.online
+def test_add_entries_from_fido_search_result_JSOC_client(database):
+    assert len(database) == 0
+    search_result = Fido.search(
+        net_attrs.jsoc.Time('2014-01-01T00:00:00','2014-01-01T01:00:00'),
+        net_attrs.jsoc.Series('hmi.m_45s'),
+        net_attrs.jsoc.Notify("sunpy@sunpy.org")
+        )
+    with pytest.raises(ValueError):
+        database.add_from_fido_search_result(search_result)
+
+
+@pytest.mark.online
+def test_add_entries_from_fido_search_result_duplicates(database,
+        fido_search_result):
+    assert len(database) == 0
+    database.add_from_fido_search_result(fido_search_result)
+    assert len(database) == 65
+    with pytest.raises(EntryAlreadyAddedError):
+        database.add_from_fido_search_result(fido_search_result)
+
+
+@pytest.mark.online
+def test_add_entries_from_fido_search_result_ignore_duplicates(database,
+        fido_search_result):
+    assert len(database) == 0
+    database.add_from_fido_search_result(fido_search_result)
+    assert len(database) == 65
+    database.add_from_fido_search_result(fido_search_result, True)
+    assert len(database) == 2*65
 
 
 def test_add_fom_path(database):

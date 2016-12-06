@@ -16,11 +16,12 @@ from sqlalchemy import Column, Integer, Float, String, DateTime, Boolean,\
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
-from sunpy.time import parse_time
+from sunpy.time import parse_time, TimeRange
 from sunpy.io import fits, file_tools as sunpy_filetools
 from sunpy.util import print_table
 from sunpy.extern.six.moves import map
 from sunpy.extern import six
+import sunpy.net
 
 from sunpy import config
 
@@ -340,6 +341,66 @@ class DatabaseEntry(Base):
             instrument=instrument, size=qr_block.size,
             wavemin=wavemin, wavemax=wavemax)
 
+    @classmethod
+    def _from_fido_search_result_block(cls, sr_block, default_waveunit=None):
+        """Make a new :class:`DatabaseEntry` instance from a Fido search
+        result block.
+
+        Parameters
+        ----------
+        sr_block : sunpy.net.dataretriever.client.QueryResponseBlock
+            A query result block is usually not created directly; instead,
+            one gets instances of
+            ``sunpy.net.dataretriever.client.QueryResponseBlock`` by iterating
+            over each element of a Fido search result.
+        default_waveunit : str, optional
+            The wavelength unit that is used if it cannot be found in the
+            `sr_block`.
+
+        Examples
+        --------
+        >>> from sunpy.net import Fido, attrs
+        >>> from sunpy.database.tables import DatabaseEntry
+        >>> sr = Fido.search(attrs.Time("2012/1/1", "2012/1/2"),
+        ...    attrs.Instrument('lyra'))
+        >>> entry = DatabaseEntry._from_fido_search_result_block(sr[0][0])
+        >>> entry.source
+        'Proba2'
+        >>> entry.provider
+        'esa'
+        >>> entry.physobs
+        'irradiance'
+        >>> entry.fileid
+        'http://proba2.oma.be/lyra/data/bsd/2012/01/01/lyra_20120101-000000_lev2_std.fits'
+        >>> entry.observation_time_start, entry.observation_time_end
+        (datetime.datetime(2012, 1, 1, 0, 0), datetime.datetime(2012, 1, 2, 0, 0))
+        >>> entry.instrument
+        'lyra'
+
+        """
+        # All attributes of DatabaseEntry that are not in QueryResponseBlock
+        # are set as None for now.
+        source = str(sr_block.source) if sr_block.source is not None else None
+        provider = str(sr_block.provider) if sr_block.provider is not None else None
+        # physobs is written as phyobs in
+        # sunpy.net.dataretriever.client.QueryResponseBlock
+        physobs = getattr(sr_block, 'phyobs', None)
+        if physobs is not None:
+            physobs = str(physobs)
+        instrument = str(sr_block.instrument) if sr_block.instrument is not None else None
+        time_start = sr_block.time.start
+        time_end = sr_block.time.end
+        wavemin = None
+        wavemax = None
+        #sr_block.url of a QueryResponseBlock attribute is stored in fileid
+        fileid = str(sr_block.url) if sr_block.url is not None else None
+        size = None
+        return cls(
+            source=source, provider=provider, physobs=physobs, fileid=fileid,
+            observation_time_start=time_start, observation_time_end=time_end,
+            instrument=instrument, size=size,
+            wavemin=wavemin, wavemax=wavemax)
+
     def __eq__(self, other):
         wavemins_equal = self.wavemin is None and other.wavemin is None or\
             self.wavemin is not None and other.wavemin is not None and\
@@ -364,6 +425,26 @@ class DatabaseEntry(Base):
             bool(self.starred) == bool(other.starred) and
             self.fits_header_entries == other.fits_header_entries and
             self.tags == other.tags)
+
+    def _compare_attributes(self, other, attribute_list):
+        """Compare a given list of attributes of two :class:`DatabaseEntry` 
+        instances and return True if all of them match.
+
+        Parameters
+        ----------
+        other : :class:`DatabaseEntry` instance
+
+        attribute_list : list
+            The list of attributes that will be compared in both instances,
+            self and other.
+
+        """
+        if len(attribute_list) == 0 :
+            raise TypeError('At least one attribute required')
+        for attribute in attribute_list:
+            if self.__dict__[attribute] != other.__dict__[attribute]:
+                return False
+        return True
 
     def __hash__(self):
         return super(DatabaseEntry, self).__hash__()
@@ -432,6 +513,63 @@ def entries_from_query_result(qr, default_waveunit=None):
         yield DatabaseEntry._from_query_result_block(block, default_waveunit)
 
 
+def entries_from_fido_search_result(sr, default_waveunit=None):
+    """Use a `sunpy.net.dataretriever.downloader_factory.UnifiedResponse`
+    object returned from
+    :meth:`sunpy.net.dataretriever.downloader_factory.UnifiedDownloaderFactory.search`
+    to generate instances of :class:`DatabaseEntry`. Return an iterator
+    over those instances.
+
+    Parameters
+    ----------
+    search_result : sunpy.net.dataretriever.downloader_factory.UnifiedResponse
+            A UnifiedResponse object that is used to store responses from the
+            unified downloader. This is returned by the ``search`` method of a
+            :class:`sunpy.net.dataretriever.downloader_factory.UnifiedDownloaderFactory`
+            object.
+
+    default_waveunit : str, optional
+        The wavelength unit that is used if it cannot be found in the Query
+        Response block.
+
+    Examples
+    --------
+    >>> from sunpy.net import Fido, attrs
+    >>> from sunpy.database.tables import entries_from_fido_search_result
+    >>> sr = Fido.search(attrs.Time("2012/1/1", "2012/1/2"),
+    ...     attrs.Instrument('lyra'))
+    >>> entries = entries_from_fido_search_result(sr)
+    >>> entry = entries.next()
+    >>> entry.source
+    'Proba2'
+    >>> entry.provider
+    'esa'
+    >>> entry.physobs
+    'irradiance'
+    >>> entry.fileid
+    'http://proba2.oma.be/lyra/data/bsd/2012/01/01/lyra_20120101-000000_lev2_std.fits'
+    >>> entry.observation_time_start, entry.observation_time_end
+    (datetime.datetime(2012, 1, 1, 0, 0), datetime.datetime(2012, 1, 2, 0, 0))
+    >>> entry.instrument
+    'lyra'
+
+    """
+    for entry in sr:
+        if isinstance(entry, sunpy.net.vso.vso.QueryResponse):
+            #This is because EVE doesn't return a Fido QueryResponse. It
+            #returns a VSO QueryResponse.
+            for block in entry:
+                yield DatabaseEntry._from_query_result_block(block,
+                            default_waveunit)
+        elif isinstance(entry, sunpy.net.jsoc.jsoc.JSOCResponse):
+            #Adding JSOC results to the DB not supported for now
+            raise ValueError("Cannot add JSOC results to database")
+        else:
+            for block in entry:
+                yield DatabaseEntry._from_fido_search_result_block(block,
+                            default_waveunit)
+
+
 def entries_from_file(file, default_waveunit=None):
     """Use the headers of a FITS file to generate an iterator of
     :class:`sunpy.database.tables.DatabaseEntry` instances. Gathered
@@ -491,6 +629,7 @@ def entries_from_file(file, default_waveunit=None):
         filename = file
     else:
         filename = getattr(file, 'name', None)
+
     for header in headers:
         entry = DatabaseEntry(path=filename)
         for key, value in six.iteritems(header):
@@ -513,7 +652,13 @@ def entries_from_file(file, default_waveunit=None):
                 unit = Unit(waveunit)
             except ValueError:
                 raise WaveunitNotConvertibleError(waveunit)
+        try:
+            instrument_name = next(x for x in entry.fits_header_entries if x.key == 'TELESCOP').value
+        except:
+            pass
+
         for header_entry in entry.fits_header_entries:
+
             key, value = header_entry.key, header_entry.value
             if key == 'INSTRUME':
                 entry.instrument = value
@@ -526,9 +671,23 @@ def entries_from_file(file, default_waveunit=None):
             # NOTE: the key DATE-END or DATE_END is not part of the official
             # FITS standard, but many FITS files use it in their header
             elif key in ('DATE-END', 'DATE_END'):
-                entry.observation_time_end = parse_time(value)
+                try:
+                    entry.observation_time_end = parse_time(value)
+                except ValueError:
+                    if 'goes' in instrument_name.lower():
+                        entry.observation_time_end = datetime.strptime(value,
+                            '%d/%m/%Y')
+             #       else:
+             #          raise
             elif key in ('DATE-OBS', 'DATE_OBS'):
-                entry.observation_time_start = parse_time(value)
+                try:
+                    entry.observation_time_start = parse_time(value)
+                except ValueError:
+                        if 'goes' in instrument_name.lower():
+                            entry.observation_time_start = datetime.strptime(value,
+                                '%d/%m/%Y')
+            #            else:
+            #                raise
         yield entry
 
 

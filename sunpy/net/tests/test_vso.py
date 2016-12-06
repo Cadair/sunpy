@@ -171,13 +171,12 @@ def test_wave_xor():
     one = va.Wave(0 * u.AA, 1000 * u.AA)
     a = one ^ va.Wave(200 * u.AA, 400 * u.AA)
 
-    assert a == attr.AttrOr(
-        [va.Wave(0 * u.AA, 200 * u.AA), va.Wave(400 * u.AA, 1000 * u.AA)])
+    assert a == attr.AttrOr([va.Wavelength(0 * u.AA, 200 * u.AA), va.Wavelength(400 * u.AA, 1000 * u.AA)])
 
     a ^= va.Wave(600 * u.AA, 800 * u.AA)
 
-    assert a == attr.AttrOr([va.Wave(0 * u.AA, 200 * u.AA), va.Wave(
-        400 * u.AA, 600 * u.AA), va.Wave(800 * u.AA, 1000 * u.AA)])
+    assert a == attr.AttrOr(
+        [va.Wavelength(0 * u.AA, 200 * u.AA), va.Wavelength(400 * u.AA, 600 * u.AA), va.Wavelength(800 * u.AA, 1000 * u.AA)])
 
 
 def test_err_dummyattr_create():

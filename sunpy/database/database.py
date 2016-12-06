@@ -17,14 +17,16 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 from astropy import units
 
 import sunpy
+from sunpy.io import read_file_header
+from sunpy.io.file_tools import UnrecognizedFileTypeError
 from sunpy.database import commands, tables, serialize
-from sunpy.database.tables import _create_display_table
 from sunpy.database.caching import LRUCache
 from sunpy.database.commands import CompositeOperation
 from sunpy.database.attrs import walker
 from sunpy.net.hek2vso import H2VClient
 from sunpy.net.attr import and_
 from sunpy.net.vso import VSOClient
+from sunpy.net import Fido
 from sunpy.extern.six.moves import range
 
 __authors__ = ['Simon Liedtke', 'Rajul Srivastava']
@@ -388,7 +390,21 @@ class Database(object):
         if client is None:
             client = VSOClient()
 
-        paths = client.get(query_result, path, methods).wait(progress=progress)
+        remove_list = []
+        for qr in query_result:
+            temp =  tables.DatabaseEntry._from_query_result_block(qr)
+            for database_entry in self:
+                if database_entry.path is not None and temp._compare_attributes(
+                    database_entry, ["source", "provider", "physobs", "fileid", 
+                    "observation_time_start", "observation_time_end", 
+                    "instrument", "size", "wavemin", "wavemax"]):
+                    remove_list.append(qr)
+                    break
+
+        for temp in remove_list:
+            query_result.remove(temp)
+
+        paths = client.get(query_result, path).wait(progress=progress)
 
         for (path, block) in zip(paths, query_result):
             qr_entry = tables.DatabaseEntry._from_query_result_block(block)
@@ -415,6 +431,57 @@ class Database(object):
                 entry.download_time = datetime.utcnow()
                 yield entry
 
+    def _download_and_collect_fido_entries(self, search_result, path=None,
+            wait=True, progress=False):
+
+        paths = Fido.fetch(search_result, wait=wait, progress=progress
+            , path=path)
+
+        entries_list = tables.entries_from_fido_search_result(search_result,
+            default_waveunit=self.default_waveunit)
+
+        for (path, sr_entry) in zip(paths, entries_list):
+            
+            # Caching Begins
+            exists=False
+            for existing_entry in self:
+                if existing_entry.path is not None and sr_entry._compare_attributes(existing_entry,
+                    ["source", "provider", "physobs", "fileid", "observation_time_start",
+                    "observation_time_end", "instrument", "size", "wavemin", "wavemax"]):
+                    exists=True
+                    break
+            if exists:
+                continue
+            # Caching Ends
+
+            try:
+                read_file_header(path)
+                if os.path.isfile(path):
+                    entries = tables.entries_from_file(path, self.default_waveunit)
+                elif os.path.isdir(path):
+                    entries = tables.entries_from_dir(path, self.default_waveunit)
+                else:
+                    raise ValueError('The path is neither a file nor directory')
+
+                for entry in entries:
+                    entry.source = sr_entry.source
+                    entry.provider = sr_entry.provider
+                    entry.physobs = sr_entry.physobs
+                    entry.fileid = sr_entry.fileid
+                    entry.observation_time_start = sr_entry.observation_time_start
+                    entry.observation_time_end = sr_entry.observation_time_end
+                    entry.instrument = sr_entry.instrument
+                    entry.size = sr_entry.size
+                    entry.wavemin = sr_entry.wavemin
+                    entry.wavemax = sr_entry.wavemax
+                    entry.path = path
+                    entry.download_time = datetime.utcnow()
+                    yield entry
+            except UnrecognizedFileTypeError:
+                entry = sr_entry
+                entry.path = path
+                yield entry
+
     def download(self, *query, **kwargs):
         """download(*query, client=sunpy.net.vso.VSOClient(), path=None, progress=False)
         Search for data using the VSO interface (see
@@ -427,21 +494,33 @@ class Database(object):
         is added to the database in a way that each FITS header is represented
         by one database entry.
 
+        It uses the
+        :meth:`sunpy.database.Database._download_and_collect_entries` method
+        to download files, which uses query result block level caching. This
+        means that files will not be downloaded for any query result block
+        that had its files downloaded previously. If files for Query A were
+        already downloaded, and then a Query B is made which has some result
+        blocks common with Query A, then files for these common blocks will
+        not be downloaded again. Files will only be downloaded for those
+        blocks which are new or haven't had their files downloaded yet.
+
         """
         if not query:
             raise TypeError('at least one attribute required')
-        
-        client = kwargs.get('client', None)
+        client = kwargs.pop('client', None)
+        path = kwargs.pop('path', None)
+        progress = kwargs.pop('progress', False)
+        if kwargs:
+            k, v = kwargs.popitem()
+            raise TypeError('unexpected keyword argument {0!r}'.format(k))
         if client is None:
             client = VSOClient()
         qr = client.query(*query)
-
         # don't do anything if querying the VSO results in no data
         if not qr:
             return
-
         entries = list(self._download_and_collect_entries(
-            qr, **kwargs))
+            qr, client, path, progress))
         dump = serialize.dump_query(and_(*query))
         (dump_exists,), = self.session.query(
             exists().where(tables.JSONDump.dump == tables.JSONDump(dump).dump))
@@ -484,13 +563,16 @@ class Database(object):
         """
         if not query:
             raise TypeError('at least one attribute required')
-        
+        path = kwargs.pop('path', None)
+        if kwargs:
+            k, v = kwargs.popitem()
+            raise TypeError('unexpected keyword argument {0!r}'.format(k))
         dump = serialize.dump_query(and_(*query))
         (dump_exists,), = self.session.query(
             exists().where(tables.JSONDump.dump == tables.JSONDump(dump).dump))
         if dump_exists:
             return self.query(*query)
-        return self.download(*query, **kwargs)
+        return self.download(*query, path=path)
 
     def query(self, *query, **kwargs):
         """
@@ -748,7 +830,8 @@ class Database(object):
 
         Add new database entries from a VSO query result and download the
         corresponding data files. See :meth:`sunpy.database.Database.download`
-        for information about the parameters `client`, `path`, `progress`.
+        for information about the caching mechanism used and about the
+        parameters `client`, `path`, `progress`.
 
         Parameters
         ----------
@@ -763,7 +846,17 @@ class Database(object):
         if not query_result:
             return
         self.add_many(self._download_and_collect_entries(
-            query_result, client=client, path=path, progress=progress))
+            query_result, client, path, progress))
+
+    def download_from_fido_search_result(self, search_result,
+            path=None, wait=True, progress=False, ignore_already_added=False):
+        if not search_result:
+            return
+        self.add_many(
+            self._download_and_collect_fido_entries(
+                search_result=search_result, path=path, wait=wait,
+                progress=progress),
+            ignore_already_added=ignore_already_added)
 
     def add_from_vso_query_result(self, query_result,
             ignore_already_added=False):
@@ -784,6 +877,29 @@ class Database(object):
             tables.entries_from_query_result(
                 query_result, self.default_waveunit),
             ignore_already_added)
+
+    def add_from_fido_search_result(self, search_result,
+            ignore_already_added=False):
+        """Generate database entries from a Fido search result and add all the
+        generated entries to this database.
+
+        Parameters
+        ----------
+        search_result : sunpy.net.dataretriever.downloader_factory.UnifiedResponse
+            A UnifiedResponse object that is used to store responses from the
+            unified downloader. This is returned by the ``search`` method of a
+            :class:`sunpy.net.dataretriever.downloader_factory.UnifiedDownloaderFactory`
+            object.
+
+        ignore_already_added : bool
+            See :meth:`sunpy.database.Database.add`.
+
+        """
+        self.add_many(
+            tables.entries_from_fido_search_result(
+                search_result, self.default_waveunit),
+            ignore_already_added)
+
 
     def add_from_dir(self, path, recursive=False, pattern='*',
             ignore_already_added=False):
@@ -959,12 +1075,6 @@ class Database(object):
         """
         self._command_manager.redo(n)  # pragma: no cover
 
-    def display_entries(self, columns=None, sort=False):
-        print(_create_display_table(self, columns, sort))
-
-    def show_in_browser(self, columns=None, sort=False, jsviewer=True):
-        _create_display_table(self, columns, sort).show_in_browser(jsviewer)
-
     def __getitem__(self, key):
         if isinstance(key, slice):
             entries = []
@@ -1007,12 +1117,3 @@ class Database(object):
     def __len__(self):
         """Get the number of rows in the table."""
         return self.session.query(tables.DatabaseEntry).count()
-
-    def __repr__(self):
-        return _create_display_table(self).__repr__()
-
-    def __str__(self):
-        return _create_display_table(self).__str__()
-
-    def _repr_html_(self):
-        return _create_display_table(self)._repr_html_()
