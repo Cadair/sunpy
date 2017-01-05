@@ -1,39 +1,100 @@
+"""
+This module contains the factory code for the ``sunpy.net.Fido`` factory. As
+well as defining ``Fido`` which is an instance of
+`sunpy.net.fido_factory.UnifiedDownloaderFactory` it defines
+`~sunpy.net.fido_factory.UnifiedResponse` which ``Fido.search`` returns.
+`~sunpy.net.fido_factory.DownloadResponse` objects are returned by ``Fido.fetch``.
+
+"""
 # Author: Rishabh Sharma <rishabh.sharma.gunner@gmail.com>
 # This module was developed under funding provided by
 # Google Summer of Code 2014
+from collections import MutableSequence
 
 from sunpy.util.datatype_factory_base import BasicRegistrationFactory
 from sunpy.util.datatype_factory_base import NoMatchError
 from sunpy.util.datatype_factory_base import MultipleMatchError
 
 from sunpy.net.dataretriever.clients import CLIENTS
+from sunpy.net.dataretriever.client import QueryResponse
 from sunpy.net.vso import VSOClient
-from .. import attr
-from .. import attrs as a
+from . import attr
+from . import attrs as a
 
-__all__ = ['Fido']
+__all__ = ['Fido', 'UnifiedResponse', 'UnifiedDownloaderFactory', 'DownloadResponse']
 
 
-class UnifiedResponse(list):
+class UnifiedResponse(MutableSequence):
     """
     The object used to store responses from the unified downloader.
-
-    Properties
-    ----------
-    file_num : int
-        The total number of files found as a result of the query.
-
     """
     def __init__(self, lst):
+        """
+        Input to this constructor can be one of a few things:
+
+        1. A list of one UnifiedResponse object
+        2. A list of tuples (QueryResponse, client)
+        """
 
         tmplst = []
-        for block in lst:
-            block[0].client = block[1]
-            tmplst.append(block[0])
-        super(UnifiedResponse, self).__init__(tmplst)
+        # numfile is the number of files not the number of results.
         self._numfile = 0
-        for qblock in self:
-            self._numfile += len(qblock)
+        if isinstance(lst, QueryResponse):
+            if not hasattr(lst, 'client'):
+                raise("QueryResponse is only a valid input if it has a client attribute.")
+            tmplst.append(lst)
+            self._numfile = len(lst)
+        else:
+            for block in lst:
+                if isinstance(block, tuple) and len(block) == 2:
+                    block[0].client = block[1]
+                    tmplst.append(block[0])
+                    self._numfile += len(block[0])
+                elif hasattr(block, 'client'):
+                    tmplst.append(block)
+                    self._numfile += len(block)
+                else:
+                    raise Exception("{} is not a valid input to UnifiedResponse.".format(lst))
+
+        self._list = tmplst
+
+    def __len__(self):
+        return len(self._list)
+
+    def __getitem__(self, aslice):
+        ret = self._list[aslice]
+        if ret:
+            if isinstance(ret, list):
+                return type(self)(ret)
+            else:
+                return type(self)(ret)
+
+        return ret
+
+    def __delitem__(self, i):
+        del self._list[i]
+
+    def __setitem__(self, aslice, v):
+        self._list[aslice] = v
+
+    def insert(self, i, v):
+        self._list.insert(i, v)
+
+    def get_response(self, i):
+        """
+        Get the actual response rather than another UnifiedResponse object.
+        """
+        return self._list[i]
+
+    @property
+    def responses(self):
+        """
+        A generator of all the `sunpy.net.dataretriever.client.QueryResponse`
+        objects contained in the `~sunpy.net.fido_factory.UnifiedResponse`
+        object.
+        """
+        for i in range(len(self)):
+            yield self.get_response(i)
 
     @property
     def file_num(self):
@@ -41,7 +102,7 @@ class UnifiedResponse(list):
 
     def _repr_html_(self):
         ret = ''
-        for block in self:
+        for block in self.responses:
             ret += block._repr_html_()
 
         return ret
@@ -111,6 +172,11 @@ def _create_or(walker, query, factory):
 
 
 class UnifiedDownloaderFactory(BasicRegistrationFactory):
+    """
+    sunpy.net.Fido(\*args, \*\*kwargs)
+
+    Search and Download data from a variety of supported sources.
+    """
     def search(self, *query):
         """
         Query for data in form of multiple parameters.
@@ -142,7 +208,7 @@ class UnifiedDownloaderFactory(BasicRegistrationFactory):
 
         Returns
         -------
-        `sunpy.net.dataretriever.downloader_factory.UnifiedResponse` object
+        `sunpy.net.fido_factory.UnifiedResponse` object
             Container of responses returned by clients servicing query.
 
         Notes
@@ -162,7 +228,7 @@ class UnifiedDownloaderFactory(BasicRegistrationFactory):
 
         Parameters
         ----------
-        query_result : `sunpy.net.dataretriever.downloader_factory.UnifiedResponse`
+        query_result : `sunpy.net.fido_factory.UnifiedResponse`
             Container returned by query method.
 
         wait : `bool`
@@ -173,7 +239,7 @@ class UnifiedDownloaderFactory(BasicRegistrationFactory):
 
         Returns
         -------
-        `sunpy.net.dataretriever.downloader_factory.DownloadResponse`
+        `sunpy.net.fido_factory.DownloadResponse`
 
         Example
         --------
@@ -183,7 +249,7 @@ class UnifiedDownloaderFactory(BasicRegistrationFactory):
         >>> file_paths = downresp.wait()
         """
         reslist = []
-        for block in query_result:
+        for block in query_result.responses:
             reslist.append(block.client.get(block, **kwargs))
 
         results = DownloadResponse(reslist)

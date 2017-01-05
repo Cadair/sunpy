@@ -80,7 +80,7 @@ class QueryResponse(list):
                          max(qrblock.time.end for qrblock in self))
 
     def __repr__(self):
-        return repr(self._build_table())
+        return repr(type(self)) + repr(self._build_table())
 
     def __str__(self):
         return str(self._build_table())
@@ -227,7 +227,7 @@ class GenericClient(object):
     def _can_handle_query(cls, *query):
         """
         Method the
-        `sunpy.net.dataretriever.downloader_factory.UnifiedDownloaderFactory`
+        `sunpy.net.fido_factory.UnifiedDownloaderFactory`
         class uses to dispatch queries to this Client.
         """
         raise NotImplementedError
