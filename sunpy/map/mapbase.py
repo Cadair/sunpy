@@ -1674,6 +1674,8 @@ Reference Coord:\t {refcoord}
                 xlabel = 'Carrington Longitude [{lon}]'.format(lon=self.spatial_units.lon)
             elif self.coordinate_system.lon.startswith('HPLN'):
                 xlabel = 'Helioprojective Longitude (Solar-X) [{xpos}]'.format(xpos=self.spatial_units.lon)
+            elif self.coordinate_system.lon.startswith('SOLX'):
+                xlabel = 'Heliocentric X [{xpos}]'.format(xpos=self.spatial_units.lon)
             else:
                 xlabel = "{} [{}]".format(self.coordinate_system.lon, self.spatial_units.lon)
 
@@ -1682,6 +1684,8 @@ Reference Coord:\t {refcoord}
                 ylabel = 'Latitude [{lat}]'.format(lat=self.spatial_units.lat)
             elif self.coordinate_system.lat.startswith('HPLT'):
                 ylabel = 'Helioprojective Latitude (Solar-Y) [{ypos}]'.format(ypos=self.spatial_units.lat)
+            elif self.coordinate_system.lat.startswith('SOLY'):
+                ylabel = 'Heliocentric Y [{xpos}]'.format(xpos=self.spatial_units.lon)
             else:
                 ylabel = "{} [{}]".format(self.coordinate_system.lat, self.spatial_units.lat)
 
@@ -1702,7 +1706,8 @@ Reference Coord:\t {refcoord}
             ret = axes.imshow(np.ma.array(np.asarray(self.data), mask=self.mask), **imshow_args)
 
         if wcsaxes_compat.is_wcsaxes(axes):
-            wcsaxes_compat.default_wcs_grid(axes, units=self.spatial_units)
+            wcsaxes_compat.default_wcs_grid(axes, units=self.spatial_units,
+                                            ctypes=self.coordinate_system)
 
         # Set current image (makes colorbar work)
         plt.sca(axes)
