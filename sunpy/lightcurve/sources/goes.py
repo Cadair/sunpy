@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Provides programs to process and analyze GOES X-ray data."""
 from __future__ import absolute_import
 
@@ -49,8 +49,8 @@ class GOESLightCurve(LightCurve):
         .. plot::
 
             from sunpy import lightcurve as lc
-            from sunpy.data.sample import GOES_LIGHTCURVE
-            goes = lc.GOESLightCurve.create(GOES_LIGHTCURVE)
+            from sunpy.data.sample import GOES_XRS_TIMESERIES
+            goes = lc.GOESLightCurve.create(GOES_XRS_TIMESERIES)
             goes.peek()
 
         Parameters
@@ -187,7 +187,7 @@ class GOESLightCurve(LightCurve):
 
     @staticmethod
     def _parse_fits(filepath):
-        """Parses a GOES FITS file from
+        """Parses a GOES/XRS FITS file from
         http://umbra.nascom.nasa.gov/goes/fits/"""
         fits = pyfits.open(filepath)
         header = fits[0].header

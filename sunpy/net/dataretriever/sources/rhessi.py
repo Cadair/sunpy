@@ -14,11 +14,12 @@ class RHESSIClient(GenericClient):
     def _get_url_for_timerange(self, timerange, **kwargs):
         """
         Returns a URL to the RHESSI data for the specified date range.
+
         Parameters
         ----------
         args : TimeRange, datetimes, date strings
-        Date range should be specified using a TimeRange, or start
-        and end dates at datetime instances or date strings.
+            Date range should be specified using a TimeRange, or start
+            and end dates at datetime instances or date strings.
         """
         return rhessi.get_obssum_filename(timerange)
 
@@ -48,6 +49,6 @@ class RHESSIClient(GenericClient):
         chkattr = ['Time', 'Instrument']
         chklist = [x.__class__.__name__ in chkattr for x in query]
         for x in query:
-            if x.__class__.__name__ == 'Instrument' and x.value == 'rhessi':
+            if x.__class__.__name__ == 'Instrument' and x.value.lower() == 'rhessi':
                 return all(chklist)
         return False

@@ -15,21 +15,21 @@ import re
 import os
 import sys
 import logging
-import threading
+import requests
+import warnings
+import socket
 
 from datetime import datetime, timedelta
 from functools import partial
 from collections import defaultdict
 from suds import client, TypeNotFound
 
-import astropy
-from astropy.table import Table, Column
 import astropy.units as u
+from astropy.table import QTable as Table
 
 from sunpy import config
 from sunpy.net import download
 from sunpy.net.proxyfix import WellBehavedHttpTransport
-from sunpy.util.progressbar import TTYProgressBar as ProgressBar
 from sunpy.util.net import get_filename, slugify
 from sunpy.net.attr import and_, Attr
 from sunpy.net.vso import attrs
@@ -37,13 +37,15 @@ from sunpy.net.vso.attrs import walker, TIMEFORMAT
 from sunpy.util import replacement_filename
 from sunpy.time import parse_time
 
-from sunpy.extern.six import iteritems, text_type, u, PY2
+from sunpy.extern import six
+from sunpy.extern.six import iteritems, text_type
 from sunpy.extern.six.moves import input
 
 TIME_FORMAT = config.get("general", "time_format")
 
-DEFAULT_URL = 'http://docs.virtualsolar.org/WSDL/VSOi_rpc_literal.wsdl'
-DEFAULT_PORT = 'nsoVSOi'
+DEFAULT_URL_PORT = [{'url': 'http://docs.virtualsolar.org/WSDL/VSOi_rpc_literal.wsdl',
+                     'port': 'nsoVSOi', 'transport': WellBehavedHttpTransport}]
+
 RANGE = re.compile(r'(\d+)(\s*-\s*(\d+))?(\s*([a-zA-Z]+))?')
 
 # Override the logger that dumps the whole Schema
@@ -54,12 +56,14 @@ suds_log.setLevel(50)
 
 # TODO: Name
 class NoData(Exception):
+
     """ Risen for callbacks of VSOClient that are unable to supply
     information for the request. """
     pass
 
 
 class _Str(str):
+
     """ Subclass of string that contains a meta attribute for the
     record_item associated with the file. """
     pass
@@ -95,7 +99,27 @@ def iter_errors(response):
             yield prov_item
 
 
+def check_connection(url):
+    try:
+        return requests.get(url).status_code == 200
+    except (socket.error, socket.timeout) as e:
+        warnings.warn(
+            "Connection failed with error {}. \n Retrying with different url and port.".format(e))
+
+
+def get_online_vso_url(api, url, port):
+    if api is None and (url is None or port is None):
+        for mirror in DEFAULT_URL_PORT:
+            if check_connection(mirror['url']):
+                api = client.Client(
+                    mirror['url'], transport=mirror['transport']())
+                api.set_options(port=mirror['port'])
+                return api
+
+
+# TODO: Python 3 this should subclass from UserList
 class QueryResponse(list):
+
     def __init__(self, lst, queryresult=None, table=None):
         super(QueryResponse, self).__init__(lst)
         self.queryresult = queryresult
@@ -125,14 +149,14 @@ class QueryResponse(list):
         return (
             datetime.strptime(
                 min(record.time.start for record in self
-                  if record.time.start is not None), TIMEFORMAT),
+                    if record.time.start is not None), TIMEFORMAT),
             datetime.strptime(
                 max(record.time.end for record in self
-                  if record.time.end is not None), TIMEFORMAT)
+                    if record.time.end is not None), TIMEFORMAT)
         )
 
     def build_table(self):
-        keywords = ['Start Time', 'End Time', 'Source', 'Instrument', 'Type']
+        keywords = ['Start Time', 'End Time', 'Source', 'Instrument', 'Type', 'Wavelength']
         record_items = {}
         for key in keywords:
             record_items[key] = []
@@ -152,7 +176,27 @@ class QueryResponse(list):
             record_items['Source'].append(str(record.source))
             record_items['Instrument'].append(str(record.instrument))
             record_items['Type'].append(str(record.extent.type)
-                                if record.extent.type is not None else ['N/A'])
+                                        if record.extent.type is not None else ['N/A'])
+            # If we have a start and end Wavelength, make a quantity
+            if hasattr(record, 'wave') and record.wave.wavemin and record.wave.wavemax:
+                record_items['Wavelength'].append(u.Quantity([float(record.wave.wavemin),
+                                                              float(record.wave.wavemax)],
+                                                             unit=record.wave.waveunit))
+            # If not save None
+            else:
+                record_items['Wavelength'].append(None)
+        # If we have no wavelengths for the whole list, drop the col
+        if all([a is None for a in record_items['Wavelength']]):
+            record_items.pop('Wavelength')
+            keywords.remove('Wavelength')
+        else:
+            # Make whole column a quantity
+            try:
+                with u.set_enabled_equivalencies(u.spectral()):
+                    record_items['Wavelength'] = u.Quantity(record_items['Wavelength'])
+            # If we have mixed units or some Nones just represent as strings
+            except (u.UnitConversionError, TypeError):
+                record_items['Wavelength'] = [str(a) for a in record_items['Wavelength']]
 
         return Table(record_items)[keywords]
 
@@ -174,36 +218,36 @@ class QueryResponse(list):
 class DownloadFailed(Exception):
     pass
 
+
 class MissingInformation(Exception):
     pass
+
 
 class UnknownMethod(Exception):
     pass
 
+
 class MultipleChoices(Exception):
     pass
+
 
 class UnknownVersion(Exception):
     pass
 
+
 class UnknownStatus(Exception):
     pass
 
+
 class VSOClient(object):
+
     """ Main VSO Client. """
     method_order = [
         'URL-TAR_GZ', 'URL-ZIP', 'URL-TAR', 'URL-FILE', 'URL-packaged'
     ]
 
     def __init__(self, url=None, port=None, api=None):
-        if api is None:
-            if url is None:
-                url = DEFAULT_URL
-            if port is None:
-                port = DEFAULT_PORT
-
-            api = client.Client(url, transport=WellBehavedHttpTransport())
-            api.set_options(port=port)
+        api = get_online_vso_url(api, url, port)
         self.api = api
 
     def make(self, atype, **kwargs):
@@ -316,7 +360,7 @@ class VSOClient(object):
         name = get_filename(sock, url)
         if not name:
             if not isinstance(response.fileid, text_type):
-                name = u(response.fileid, "ascii", "ignore")
+                name = six.u(response.fileid, "ascii", "ignore")
             else:
                 name = response.fileid
 
@@ -326,7 +370,7 @@ class VSOClient(object):
 
         name = slugify(name)
 
-        if PY2:
+        if six.PY2:
             name = name.encode(fs_encoding, "ignore")
 
         if not name:
@@ -465,11 +509,14 @@ class VSOClient(object):
                     try:
                         item = item[elem]
                     except KeyError:
-                        raise ValueError("Unexpected argument {key!s}.".format(key=key))
+                        raise ValueError(
+                            "Unexpected argument {key!s}.".format(key=key))
                 if lst not in item:
-                    raise ValueError("Unexpected argument {key!s}.".format(key=key))
+                    raise ValueError(
+                        "Unexpected argument {key!s}.".format(key=key))
                 if item[lst]:
-                    raise ValueError("Got multiple values for {k!s}.".format(k=k))
+                    raise ValueError(
+                        "Got multiple values for {k!s}.".format(k=k))
                 item[lst] = v
         try:
             return QueryResponse.create(self.api.service.Query(queryreq))
@@ -479,7 +526,7 @@ class VSOClient(object):
     def latest(self):
         """ Return newest record (limited to last week). """
         return self.query_legacy(
-            datetime.utcnow()  - timedelta(7),
+            datetime.utcnow() - timedelta(7),
             datetime.utcnow(),
             time_near=datetime.utcnow()
         )
@@ -550,6 +597,8 @@ class VSOClient(object):
         if path is None:
             path = os.path.join(config.get('downloads', 'download_dir'),
                                 '{file}')
+        elif isinstance(path, six.string_types) and '{file}' not in path:
+            path = os.path.join(path, '{file}')
         path = os.path.expanduser(path)
 
         fileids = VSOClient.by_fileid(query_response)
@@ -699,12 +748,17 @@ class VSOClient(object):
         """ Override to costumize download action. """
         if method.startswith('URL'):
             return dw.download(url, partial(self.mk_filename, *args),
-                        callback, errback
-            )
+                               callback, errback
+                               )
         raise NoData
 
     @staticmethod
     def by_provider(response):
+        """
+        Returns a dictionary of provider
+        corresponding to records in the response.
+        """
+
         map_ = defaultdict(list)
         for record in response:
             map_[record.provider].append(record)
@@ -712,6 +766,11 @@ class VSOClient(object):
 
     @staticmethod
     def by_fileid(response):
+        """
+        Returns a dictionary of fileids
+        corresponding to records in the response.
+        """
+
         return dict(
             (record.fileid, record) for record in response
         )
@@ -739,9 +798,10 @@ class VSOClient(object):
         return all([x.__class__.__name__ in attrs.__all__ for x in query])
 
 
-
 class InteractiveVSOClient(VSOClient):
+
     """ Client for use in the REPL. Prompts user for data if required. """
+
     def multiple_choices(self, choices, response):
         """
         not documented yet
@@ -823,6 +883,8 @@ class InteractiveVSOClient(VSOClient):
 
 
 g_client = None
+
+
 def search(*args, **kwargs):
     # pylint: disable=W0603
     global g_client
@@ -830,7 +892,9 @@ def search(*args, **kwargs):
         g_client = InteractiveVSOClient()
     return g_client.search(*args, **kwargs)
 
+
 search.__doc__ = InteractiveVSOClient.search.__doc__
+
 
 def get(query_response, path=None, methods=('URL-FILE',), downloader=None):
     # pylint: disable=W0603
@@ -839,14 +903,5 @@ def get(query_response, path=None, methods=('URL-FILE',), downloader=None):
         g_client = InteractiveVSOClient()
     return g_client.get(query_response, path, methods, downloader)
 
+
 get.__doc__ = VSOClient.get.__doc__
-
-if __name__ == "__main__":
-    from sunpy.net import vso
-
-    client = VSOClient()
-    result = client.query(
-        vso.attrs.Time((2011, 1, 1), (2011, 1, 1, 10)),
-        vso.attrs.Instrument('aia')
-    )
-    #res = client.get(result, path="/download/path").wait()

@@ -1,6 +1,17 @@
 Latest
 ------
 
+* Add tests for RHESSI instrument 
+* Sample data now downloads automatically on import if not available and
+  is now pluggable so can be used by affiliated packages. Shortcut names
+  have been normalized and all LIGHTCURVE shortcuts have changed to
+  TIMESERIES.
+* Calculation of points on an arc of a great circle connecting two points on the Sun.
+* Maps from Helioviewer JPEG2000 files now have correct image scaling.
+* Removed `extract_time` function from `sunpy.time` and also tests related to the function from `sunpy.time.tests`
+* User can now pass a custom time format as an argument inside
+  `sunpy.database.add_from_dir()` in case the `date-obs` metadata cannot
+  be read automatically from the files.
 * Get and set methods for composite maps now use Map plot_settings.
 * Simplified map names when plotting.
 * Add time format used by some SDO HMI FITS keywords
@@ -21,8 +32,47 @@ Latest
 * Remove deprecated `VSOClient.show` method.
 * Deprecate `sunpy.wcs`: `sunpy.coordinates` and `sunpy.map` now provide all
   that functionality in a more robust manner.
+* Added hdu index in `sunpy.database.tables.DatabaseEntry` as a column in the table.
 * Removed `HelioviewerClient` from the `sunpy.net` namespace. It should now be
   imported with `from sunpy.net.helioviewer import HelioviewerClient`.
+* Removed compatibility with standalone ``wcsaxes`` and instead depend on the
+  version in astropy 1.3. SunPy now therefore depends on astropy>=1.3.
+* Update to `TimeRange.__repr__`; now includes the qualified name and `id` of
+  the object.
+* A new `sunpy.visualization.imageanimator.LineAnimator` class has been added to
+  animate 1D data.  This has resulted in API change for the
+  `sunpy.visualization.imageanimator.ImageAnimator` class.  The updateimage
+  method has been renamed to update_plot.
+* Change the default representation for the Heliographic Carrington frame so
+  Longitude follows the convention of going from 0-360 degrees.
+* Fix Map parsing of some header values to allow valid float strings like 'nan'
+  and 'inf'.
+* Drop support for Python 3.4.
+* SunPy now requires WCSAxes and Map.draw_grid only works with WCSAxes.
+* `Helioprojective` and `HelioCentric` frames now have an `observer` attribute
+  which itself is a coordinate object (`SkyCoord`) instead of `B0`, `L0` and
+  `D0` to describe the position of the observer.
+* `GenericMap.draw_grid` now uses `WCSAxes`, it will only work on a `WCSAxes`
+  plot, this may be less performant than the previous implementation.
+* `GenericMap.world_to_pixel` and `GenericMap.pixel_to_world` now accept and
+  return `SkyCoord` objects only.
+* `GenericMap` has a new property `observer_coordinate` which returns a
+  `SkyCoord` describing the position of the observer.
+* `GenericMap.submap` now takes arguments of the form `bottom_left` and
+  `top_right` rather than `range_a` and `range_b`. This change enables submap to
+  properly handle rotated maps and take input in the form of `SkyCoord` objects.
+* When referring to physical coordinates `Pair.x` has been replaced with
+  `SpatialPair.axis1`. This means values returned by `GenericMap` now
+  differentiate between physical and pixel coordinates.
+* Fix Map parsing of some header values to allow valid float strings like 'nan'
+  and 'inf'.
+* The physical radius of the Sun (length units) is now passed from Map into the
+  coordinate frame so a consistent value is used when calculating distance to
+  the solar surface in the `HelioprojectiveFrame` coordinate frame.
+* A new `sunpy.visualization.imageanimator.ImageAnimatorWCS` class has been added to
+  animate N-Dimensional data with the associated WCS object.
+* Moved Docs to docs/ to follow the astropy style
+* Added SunPy specific warnings under util.
 
 0.7.0
 -----
@@ -111,7 +161,7 @@ Latest
  * Map plot functionality now uses the mask property if it is present, allowing the plotting of masked map data
  * Map Expects Quantities and returns quantities for most parameters.
  * Map now used Astropy.wcs for world <-> pixel conversions.
- * map.data_to_pixel now has a similar API to map.pixel_to_data.
+ * map.world_to_pixel now has a similar API to map.pixel_to_world.
  * map.shape has been replaced with map.dimensions, which is ordered
    x first.
  * map.rsun_arcseconds is now map.rsun_obs as it returns a quantity.

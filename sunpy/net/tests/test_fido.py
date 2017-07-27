@@ -17,7 +17,7 @@ from sunpy.time import TimeRange, parse_time
 from sunpy import config
 
 from .strategies import (online_instruments, offline_instruments,
-                         time_attr, rhessi_time, goes_time)
+                         time_attr, range_time, goes_time)
 
 TIMEFORMAT = config.get("general", "time_format")
 
@@ -43,7 +43,7 @@ def online_query(draw, instrument=online_instruments(), time=time_attr()):
     query = draw(instrument)
     # If we have AttrAnd then we don't have RHESSI
     if isinstance(query, a.Instrument) and query.value == 'rhessi':
-        query = query & draw(rhessi_time())
+        query = query & draw(range_time(parse_time('2002-02-01')))
     return query
 
 
@@ -95,6 +95,7 @@ Factory Tests
 """
 
 
+@pytest.mark.online
 def test_unified_response():
     start = parse_time("2012/1/1")
     end = parse_time("2012/1/2")
@@ -161,8 +162,11 @@ def test_no_wait_fetch():
         assert isinstance(res, DownloadResponse)
         assert isinstance(res.wait(), list)
 
+
 """
 UnifiedResponse Tests
+
+Use LYRA here because it does not use the internet to return results.
 """
 
 
@@ -172,6 +176,7 @@ def test_unifiedresponse_slicing():
     assert isinstance(results[0:2], UnifiedResponse)
     assert isinstance(results[0], UnifiedResponse)
 
+
 def test_responses():
     results = Fido.search(
         a.Time("2012/1/1", "2012/1/5"), a.Instrument("lyra"))
@@ -180,3 +185,13 @@ def test_responses():
         assert isinstance(resp, QueryResponse)
 
     assert i + 1 == len(results)
+
+
+def test_repr():
+    results = Fido.search(
+        a.Time("2012/1/1", "2012/1/5"), a.Instrument("lyra"))
+
+    rep = repr(results)
+    rep = rep.split('\n')
+    # 6 header lines, the results table and a blank line at the end
+    assert len(rep) == 6 + len(list(results.responses)[0]) + 1

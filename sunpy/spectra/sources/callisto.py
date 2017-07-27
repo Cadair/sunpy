@@ -116,14 +116,14 @@ def _parse_header_time(date, time):
 
 
 class CallistoSpectrogram(LinearTimeSpectrogram):
-    """ Classed used for dynamic spectra coming from the Callisto network.
+    """ Class used for dynamic spectra coming from the Callisto network.
 
     Attributes
     ----------
     header : `~astropy.io.fits.Header`
         main header of the FITS file
     axes_header : `~astropy.io.fits.Header`
-        header foe the axes table
+        header for the axes table
     swapped : bool
         flag that specifies whether originally in the file the x-axis was
         frequency
@@ -503,9 +503,3 @@ except AttributeError:
     Possible signatures:
 
     """ + CallistoSpectrogram._create.generate_docs())
-
-
-if __name__ == "__main__":
-    opn = CallistoSpectrogram.read("callisto/BIR_20110922_103000_01.fit")
-    opn.subtract_bg().clip(0).plot(ratio=2).show()
-    print("Press return to exit")
