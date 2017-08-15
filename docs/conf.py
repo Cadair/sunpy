@@ -67,7 +67,7 @@ import sunpy.data.sample
 # -- General configuration ----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
-needs_sphinx = '1.5'
+needs_sphinx = '1.6'
 
 # To perform a Sphinx version check that needs to be more specific than
 # major.minor, call `check_sphinx_version("x.y.z")` here.
@@ -197,7 +197,22 @@ edit_on_github_skip_regex = '_.*|generated/.*'
 
 github_issues_url = 'https://github.com/sunpy/sunpy/issues/'
 
+# -- Print Sphinx Warnings to stdout -------------------------------------------
+#
+def setup(app):
+    import logging
+    from sphinx.util.logging import ColorizeFormatter, WarningStreamHandler, SafeEncodingWriter
+
+    logger = logging.getLogger()
+
+    warning_handler = WarningStreamHandler(SafeEncodingWriter(sys.stdout))  # type: ignore
+    warning_handler.setLevel(logging.WARNING)
+    warning_handler.setFormatter(ColorizeFormatter())
+
+    logger.addHandler(warning_handler)
+
 # -- Options for the Sphinx gallery -------------------------------------------
+#
 
 if ON_RTD and os.environ.get('READTHEDOCS_PROJECT').lower() != 'sunpy':
     def setup(app):
