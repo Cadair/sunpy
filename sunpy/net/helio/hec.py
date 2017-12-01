@@ -120,7 +120,7 @@ class HECClient(object):
 
     def get_table_names(self):
         """
-        Returns a l)ist of the available tables to q)uery.
+        Returns a list of the available tables to query.
 
         Returns the names of all the tables that can be queried via the
         webservice.
