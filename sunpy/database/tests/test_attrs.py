@@ -407,7 +407,7 @@ def test_walker_create_fitsheader_inverted(session):
 @pytest.mark.remote_data
 def test_walker_create_vso_instrument(vso_session):
     entries = walker.create(vso.attrs.Instrument('RHESSI'), vso_session)
-    assert entries == [
+    expected = [
         tables.DatabaseEntry(id=1, source=u'RHESSI', provider=u'LSSP',
             physobs=u'intensity',
             fileid=u'/hessidata/2011/09/20/hsi_20110920_010920',
@@ -422,6 +422,9 @@ def test_walker_create_vso_instrument(vso_session):
             observation_time_end=datetime(2011, 9, 20, 1, 9, 20),
             instrument=u'RHESSI', size=-1.0, wavemin=0.4132806579880238,
             wavemax=7.293188082141598e-05)]
+
+    assert len(entries) == len(expected)
+    assert entries == extected
 
 @pytest.mark.remote_data
 def test_walker_create_wave(vso_session):
