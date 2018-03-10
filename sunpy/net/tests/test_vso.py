@@ -408,3 +408,24 @@ def test_query_legacy():
     vc = vso.VSOClient()
     qr = vc.query_legacy("2011-01-01T00:00:00", "2011-01-01T00:01:00", instrument='aia')
     print(qr)
+
+
+@pytest.mark.remote_data
+def test_rhessi():
+    vc = vso.VSOClient()
+    qr = vc.search(
+        vso.attrs.Time((2011, 9, 20, 1), (2011, 9, 20, 2)),
+        vso.attrs.Instrument('RHESSI'))
+
+    assert len(qr) == 2
+    # Make sure it parses kev properly
+    assert str(qr)
+
+
+@pytest.mark.remote_data
+def test_progress_bar():
+    vc = vso.VSOClient()
+    qr = vc.search(vso.attrs.Time((2013, 5, 19, 2, 0), (2013, 5, 19, 2, 0), (2013, 5, 19, 2, 0)),
+                   vso.attrs.Instrument('VIRGO') | vso.attrs.Instrument('SECCHI'))
+    files = vc.fetch(qr).wait(progress=True)
+    assert len(files) == len(qr)

@@ -186,9 +186,13 @@ class QueryResponse(list):
                                         if record.extent.type is not None else ['N/A'])
             # If we have a start and end Wavelength, make a quantity
             if hasattr(record, 'wave') and record.wave.wavemin and record.wave.wavemax:
+                unit = record.wave.waveunit
+                # Convert this so astropy units parses it correctly
+                if unit == "kev":
+                    unit = "keV"
                 record_items['Wavelength'].append(u.Quantity([float(record.wave.wavemin),
                                                               float(record.wave.wavemax)],
-                                                             unit=record.wave.waveunit))
+                                                             unit=unit))
             # If not save None
             else:
                 record_items['Wavelength'].append(None)

@@ -54,6 +54,7 @@ def vso_session():
     entries = tables.entries_from_query_result(qr)
     database = Database('sqlite:///:memory:')
     for entry in entries:
+        print(entry)
         database.add(entry)
     database.commit()
     return database.session
@@ -413,18 +414,18 @@ def test_walker_create_vso_instrument(vso_session):
             fileid=u'/hessidata/2011/09/20/hsi_20110920_010920',
             observation_time_start=datetime(2011, 9, 20, 1, 9, 20),
             observation_time_end=datetime(2011, 9, 20, 2, 27, 40),
-            instrument=u'RHESSI', size=-1.0, wavemin=0.4132806579880238,
+            instrument=u'RHESSI', wavemin=0.4132806579880238,
             wavemax=7.293188082141598e-05),
         tables.DatabaseEntry(id=2, source=u'RHESSI', provider=u'LSSP',
             physobs=u'intensity',
             fileid=u'/hessidata/2011/09/19/hsi_20110919_233340',
             observation_time_start=datetime(2011, 9, 19, 23, 33, 40),
             observation_time_end=datetime(2011, 9, 20, 1, 9, 20),
-            instrument=u'RHESSI', size=-1.0, wavemin=0.4132806579880238,
+            instrument=u'RHESSI', wavemin=0.4132806579880238,
             wavemax=7.293188082141598e-05)]
 
     assert len(entries) == len(expected)
-    assert entries == extected
+    assert entries == expected
 
 @pytest.mark.remote_data
 def test_walker_create_wave(vso_session):
@@ -447,5 +448,5 @@ def test_walker_create_time(vso_session):
             fileid=u'/hessidata/2011/09/19/hsi_20110919_233340',
             observation_time_start=datetime(2011, 9, 19, 23, 33, 40),
             observation_time_end=datetime(2011, 9, 20, 1, 9, 20),
-            instrument=u'RHESSI', size=-1.0, wavemin=0.4132806579880238,
+            instrument=u'RHESSI', wavemin=0.4132806579880238,
             wavemax=7.293188082141598e-05)]
