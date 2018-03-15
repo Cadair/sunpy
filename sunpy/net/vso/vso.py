@@ -279,7 +279,7 @@ class VSOClient(object):
 
     def make(self, atype, **kwargs):
         """
-        Create a new SOAP object, without any nested kwarg BS.
+        Create a new SOAP object.
         """
         obj = self.api.get_type("VSO:{}".format(atype))
         return obj(**kwargs)

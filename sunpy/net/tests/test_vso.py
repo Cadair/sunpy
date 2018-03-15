@@ -263,7 +263,8 @@ def test_repr():
 
 
 @pytest.mark.remote_data
-def test_path(client):
+@pytest.mark.parametrize('progress', (False, True))
+def test_path(client, progress):
     """
     Test that '{file}' is automatically appended to the end of a custom path if
     it is not specified.
@@ -272,8 +273,9 @@ def test_path(client):
         va.Time('2011-06-07 06:33', '2011-06-07 06:33:08'),
         va.Instrument('aia'), va.Wavelength(171 * u.AA))
     tmp_dir = tempfile.mkdtemp()
-    files = client.fetch(qr, path=tmp_dir).wait(progress=False)
+    files = client.fetch(qr, path=tmp_dir).wait(progress=progress)
 
+    assert False
     assert len(files) == 1
 
     # The construction of a VSO filename is bonkers complex, so there is no
@@ -426,6 +428,8 @@ def test_rhessi():
 def test_progress_bar():
     vc = vso.VSOClient()
     qr = vc.search(vso.attrs.Time((2013, 5, 19, 2, 0), (2013, 5, 19, 2, 0), (2013, 5, 19, 2, 0)),
-                   vso.attrs.Instrument('VIRGO') | vso.attrs.Instrument('SECCHI'))
-    files = vc.fetch(qr).wait(progress=True)
+                   vso.attrs.Instrument('VIRGO'))# | vso.attrs.Instrument('SECCHI'))
+    files = vc.fetch(qr)
+    assert False
+    files.wait(progress=False)
     assert len(files) == len(qr)
