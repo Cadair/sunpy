@@ -13,7 +13,9 @@ import itertools
 from functools import partial
 from collections import defaultdict
 from urllib.error import URLError, HTTPError
-from urllib.request import urlopen
+from urllib.request import urlopen, Request
+from urllib.parse import urlencode
+import json
 
 import zeep
 from parfive import Downloader, Results
@@ -352,13 +354,13 @@ class VSOClient(BaseClient):
             try:
                 query_response = self.api.service.Query(
                     QueryRequest(block=block)
-                    )
+                )
                 for resp in query_response:
                     if resp["error"]:
                         warnings.warn(resp["error"], SunpyUserWarning)
                 responses.append(
                     VSOQueryResponse(query_response)
-                    )
+                )
             except Exception as ex:
                 response = QueryResponse.create(self.merge(responses))
                 response.add_error(ex)
@@ -728,7 +730,7 @@ class VSOClient(BaseClient):
 
         return self.create_getdatarequest(
             {k: [x.fileid for x in v]
-                 for k, v in self.by_provider(response).items()},
+             for k, v in self.by_provider(response).items()},
             methods, info
         )
 
@@ -909,3 +911,43 @@ class VSOClient(BaseClient):
     @classmethod
     def _attrs_module(cls):
         return 'vso', 'sunpy.net.vso.attrs'
+
+    @classmethod
+    def register_values(cls):
+        try:
+            return {cls: cls.get_vso_values()}
+        except Exception as e:
+            warnings.warn(f'Fetching VSO attrs failed with {e}')
+            return {cls: {}}
+
+    def get_vso_values():
+        """
+        Reads the VSO keywords and returns a dict with them for the attrs we support.
+        """
+        from sunpy.net import attrs as a
+
+        # Keywords we are after
+        keywords = ["+detector", "+instrument", "+source", "+provider", "+physobs"]
+
+        # Construct and format the request
+        keyword_info = {}
+        url = "https://vso1.nascom.nasa.gov/cgi-bin/registry_json.cgi"
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        for keyword in keywords:
+            data = urlencode({'fields': f"['{keyword}']".replace("'", '"')}).encode('ascii')
+            req = Request(url=url, data=data, headers=headers)
+            response = urlopen(req)
+            keyword_info[keyword.replace("+", "")] = json.loads(response.read())
+
+        # Now to traverse the return and create attrs out of them.
+        attrs = {}
+        for key, value in keyword_info.items():
+            try:
+                attr = getattr(a, key.capitalize())
+            except AttributeError:
+                attr = getattr(a.vso, key.capitalize())
+            attrs[attr] = []
+            for item in value:
+                if item:
+                    attrs[attr].append((str(item[key]), str(item[key+"_long"])))
+        return attrs

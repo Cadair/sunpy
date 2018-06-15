@@ -60,6 +60,7 @@ class Scraper:
     The ``now`` attribute does not return an existent file, but just how the
     pattern looks with the actual time.
     """
+
     def __init__(self, pattern, **kwargs):
         self.pattern = pattern.format(**kwargs)
         milliseconds = re.search(r'\%e', self.pattern)
@@ -233,8 +234,8 @@ class Scraper:
                             if self._URL_followsPattern(fullpath):
                                 datehref = self._extractDateURL(fullpath)
                                 if (datehref.to_datetime() >= timerange.start.to_datetime() and
-                                    datehref.to_datetime() <= timerange.end.to_datetime()):
-                                        filesurls.append(fullpath)
+                                        datehref.to_datetime() <= timerange.end.to_datetime()):
+                                    filesurls.append(fullpath)
                 finally:
                     opn.close()
             except HTTPError as http_err:

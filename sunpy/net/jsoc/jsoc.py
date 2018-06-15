@@ -684,9 +684,9 @@ class JSOCClient(BaseClient):
             # either through PrimeKey() attribute or Time() attribute.
             if not any(x in PKEY_LIST_TIME for x in primekey):
                 timestr = '{start}-{end}{sample}'.format(
-                        start=start_time.tai.strftime("%Y.%m.%d_%H:%M:%S_TAI"),
-                        end=end_time.tai.strftime("%Y.%m.%d_%H:%M:%S_TAI"),
-                        sample=sample)
+                    start=start_time.tai.strftime("%Y.%m.%d_%H:%M:%S_TAI"),
+                    end=end_time.tai.strftime("%Y.%m.%d_%H:%M:%S_TAI"),
+                    sample=sample)
             else:
                 error_message = "Time attribute has been passed both as a Time()"\
                                 " and PrimeKey(). Please provide any one of them"\
@@ -862,3 +862,10 @@ class JSOCClient(BaseClient):
     @classmethod
     def _attrs_module(cls):
         return 'jsoc', 'sunpy.net.jsoc.attrs'
+
+    @classmethod
+    def register_values(cls):
+        from sunpy.net import attrs
+        # TODO Implement this
+        adict = {}
+        return {cls: adict}
