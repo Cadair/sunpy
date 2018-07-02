@@ -108,10 +108,11 @@ package_info['package_data'][PACKAGENAME].extend(c_files)
 extras_require = {'database': ["sqlalchemy"],
                   'image': ["scikit-image"],
                   'jpeg2000': ["glymur"],
-                  'net': ["suds-jurko", "beautifulsoup4", "requests", "python-dateutil"],
-                  'tests': ["pytest", "pytest-cov", "pytest-mock", "pytest-rerunfailures", "mock", "hypothesis"]}
-extras_require['all'] = extras_require['database'] + extras_require['image'] + \
-                        extras_require['net'] + extras_require['tests']
+                  'net': ["suds-jurko", "beautifulsoup4", "requests", "python-dateutil", "drms"],
+                  'tests': ["pytest", "pytest-cov", "pytest-mock",
+                            "pytest-rerunfailures", "mock", "hypothesis",
+                            "pytest-astropy"]}
+extras_require['all'] = [dep for cat in extras_require.values() for dep in cat]
 
 setup(name=PACKAGENAME,
       version=VERSION,
@@ -123,6 +124,7 @@ setup(name=PACKAGENAME,
                         'pandas>=0.12.0',
                         'matplotlib>=1.3'],
       extras_require=extras_require,
+      tests_require=extras_require['tests'],
       provides=[PACKAGENAME],
       author=AUTHOR,
       author_email=AUTHOR_EMAIL,
