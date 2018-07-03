@@ -106,12 +106,11 @@ for root, dirs, files in os.walk(PACKAGENAME):
 package_info['package_data'][PACKAGENAME].extend(c_files)
 
 extras_require = {'database': ["sqlalchemy"],
-                  'image': ["scikit-image"],
                   'jpeg2000': ["glymur"],
                   'net': ["suds-jurko", "beautifulsoup4", "requests", "python-dateutil", "drms"],
                   'tests': ["pytest", "pytest-cov", "pytest-mock",
                             "pytest-rerunfailures", "mock", "hypothesis",
-                            "pytest-astropy"]}
+                            "pytest-doctestplus", "pytest-remotedata"]}
 extras_require['all'] = [dep for cat in extras_require.values() for dep in cat]
 
 setup(name=PACKAGENAME,
@@ -122,9 +121,10 @@ setup(name=PACKAGENAME,
                         'astropy>=2.0.3>=3.0.2',  # astropy/astropy#7252
                         'scipy',
                         'pandas>=0.12.0',
-                        'matplotlib>=1.3'],
+                        'matplotlib>=1.3',
+                        'scikit-image'],
       extras_require=extras_require,
-      tests_require=extras_require['tests'],
+      tests_require=extras_require['all'],
       provides=[PACKAGENAME],
       author=AUTHOR,
       author_email=AUTHOR_EMAIL,
