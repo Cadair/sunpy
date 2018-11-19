@@ -223,7 +223,9 @@ def test_rotation_matrix_cd_cdelt():
         'CD2_1': 10,
         'CD2_2': 0,
         'NAXIS1': 6,
-        'NAXIS2': 6
+        'NAXIS2': 6,
+        'CUNIT1': 'arcsec',
+        'CUNIT2': 'arcsec'
     }
     cd_map = sunpy.map.Map((data, header))
     np.testing.assert_allclose(cd_map.rotation_matrix, np.array([[0., -1.], [1., 0]]))
@@ -243,7 +245,9 @@ def test_rotation_matrix_cd_cdelt_square():
         'CD2_1': 10,
         'CD2_2': 0,
         'NAXIS1': 6,
-        'NAXIS2': 6
+        'NAXIS2': 6,
+        'CUNIT1': 'arcsec',
+        'CUNIT2': 'arcsec'
     }
     cd_map = sunpy.map.Map((data, header))
     np.testing.assert_allclose(cd_map.rotation_matrix, np.array([[0., -1], [1., 0]]))
@@ -669,6 +673,8 @@ def test_missing_metadata_warnings():
     # Checks that warnings for missing metadata are only raised once
     with pytest.warns(Warning) as record:
         array_map = sunpy.map.Map(np.random.rand(20, 15), {})
+        array_map.meta['cunit1'] = 'arcsec'
+        array_map.meta['cunit2'] = 'arcsec'
         array_map.peek()
     # There should be 4 warnings for missing metadata
     assert len([w for w in record if 'Missing metadata' in str(w)]) == 4

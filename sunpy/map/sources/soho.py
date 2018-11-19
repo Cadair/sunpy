@@ -65,6 +65,8 @@ class EITMap(GenericMap):
         # Fill in some missing info
         self.meta['detector'] = "EIT"
         self.meta['waveunit'] = "Angstrom"
+        self.meta['cunit1'] = self.meta.get('cunit1', 'arcsec')
+        self.meta['cunit2'] = self.meta.get('cunit2', 'arcsec')
         self._fix_dsun()
         self._nickname = self.detector
         self.plot_settings['cmap'] = plt.get_cmap(self._get_cmap_name())

@@ -679,8 +679,8 @@ class GenericMap(NDData):
         """
         Image coordinate units along the x and y axes (i.e. cunit1, cunit2).
         """
-        return SpatialPair(u.Unit(self.meta.get('cunit1', 'arcsec')),
-                           u.Unit(self.meta.get('cunit2', 'arcsec')))
+        return SpatialPair(u.Unit(self.meta.get('cunit1')),
+                           u.Unit(self.meta.get('cunit2')))
 
     @property
     def rotation_matrix(self):
@@ -773,8 +773,17 @@ class GenericMap(NDData):
             CUNIT1, CUNIT2, WAVEUNIT
 
         """
+        msg = ('Image coordinate units for axis {} not present in metadata. '
+               'It can be set using `map.meta["cunit{}"] = unit`.')
+        err_message = []
+        for i in [1, 2]:
+            if self.meta.get(f'cunit{i}') is None:
+                err_message.append(msg.format(i, i))
 
-        for meta_property in ('cunit1', 'cunit2', 'waveunit'):
+        if err_message:
+            raise AttributeError('\n'.join(err_message))
+
+        for meta_property in ('waveunit'):
             if (self.meta.get(meta_property) and
                 u.Unit(self.meta.get(meta_property),
                        parse_strict='silent').physical_type == 'unknown'):
