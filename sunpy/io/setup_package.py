@@ -13,9 +13,9 @@ def get_extensions():
     if platform.system() == 'Windows':
         return list()
     else:
-        # 'numpy' will be replaced with the proper path to the numpy includes
+        import numpy
         cfg = setup_helpers.DistutilsExtensionArgs()
-        cfg['include_dirs'].append('numpy')
+        cfg['include_dirs'].append(numpy.get_include())
         cfg['sources'].extend(sorted(glob(
             os.path.join(os.path.dirname(__file__), 'src', 'ana', '*.c'))))
         cfg['extra_compile_args'].extend(['-std=c99', '-O3'])
