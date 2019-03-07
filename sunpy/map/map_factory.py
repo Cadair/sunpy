@@ -291,6 +291,8 @@ class MapFactory(BasicRegistrationFactory):
             except (NoMatchError, MultipleMatchError, ValidationFunctionError):
                 if not silence_errors:
                     raise
+            except MapMetaValidationError as e:
+                warnings.warn(f"One of the data, header pairs failed to validate with: {e}")
             except Exception:
                 raise
 
