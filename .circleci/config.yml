@@ -62,7 +62,7 @@ jobs:
       - run: *apt-install
       - run:
           name: Update pip
-          command: pip install -U pip
+          command: pip install -U "pip<19.1"
       - run:
           name: Install SunPy
           command: pip install --progress-bar off -e .[all,dev]
