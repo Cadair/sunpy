@@ -146,31 +146,32 @@ class ImageAnimatorWCS(ImageAnimator):
         The unit of X axis.
     unit_y_axis: `astropy.units.Unit`
         The unit of Y axis.
-    axis_ranges: `list` of physical coordinates for the `numpy.ndarray`, optional
-        Defaults to `None` and array indices will be used for all axes.
-        The `list` should contain one element for each axis of the `numpy.ndarray`.
-        For the image axes a ``[min, max]`` pair should be specified which will be
-        passed to `matplotlib.pyplot.imshow` as an extent.
-        For the slider axes a ``[min, max]`` pair can be specified or an array the
-        same length as the axis which will provide all values for that slider.
 
     Notes
     -----
     Extra keywords are passed to `~sunpy.visualization.animator.ArrayAnimator`.
     """
-    def __init__(self, data, wcs=None, image_axes=[-1, -2], unit_x_axis=None, unit_y_axis=None,
-                 axis_ranges=None, **kwargs):
+    def __init__(self, data, wcs, image_axes=[-1, -2], unit_x_axis=None, unit_y_axis=None,
+                 axis_ranges=None, axes_units=None, axes_labels=None, **kwargs):
+
+        # For axes ranges, if pixel dimension of slider is correlated with more
+        # than one world dim, display pixel, else display world as calculated
+        # by WCS, deprecate the axes_ranges kwarg.
+
         if not isinstance(wcs, (astropy.wcs.WCS, BaseLowLevelWCS)):
             raise ValueError("wcs data should be provided.")
         if wcs.pixel_n_dim is not data.ndim:
             raise ValueError("Dimensions of data and wcs not matching")
+
         self.wcs = wcs
-        list_slices_wcsaxes = [0 for i in range(self.wcs.pixel_n_dim)]
+
+        list_slices_wcsaxes = [0] * self.wcs.pixel_n_dim
         list_slices_wcsaxes[image_axes[0]] = 'x'
         list_slices_wcsaxes[image_axes[1]] = 'y'
         self.slices_wcsaxes = list_slices_wcsaxes[::-1]
         self.unit_x_axis = unit_x_axis
         self.unit_y_axis = unit_y_axis
+
         super().__init__(data, image_axes=image_axes, axis_ranges=axis_ranges, **kwargs)
 
     def _get_main_axes(self):
