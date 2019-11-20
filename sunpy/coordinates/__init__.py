@@ -19,7 +19,7 @@ below (see `astropy.coordinates.builtin_frames`).
 """
 
 from .frames import *
-from .offset_frame import *
+from .metaframes import *
 from . import transformations
 from .ephemeris import *
 from . import sun
