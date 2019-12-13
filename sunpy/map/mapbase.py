@@ -211,6 +211,40 @@ class GenericMap(NDData):
         if plot_settings:
             self.plot_settings.update(plot_settings)
 
+    @classmethod
+    def __from_nddata__(cls, new_data_object, original_data_object=None):
+        """
+        Construct a version of GenericMap from a arbitrary NDData object.
+        """
+        # First we take the WCS as the main header
+        wcs_header = {}
+        if new_data_object.wcs is not None:
+            wcs_header = dict(new_data_object.wcs.to_header())
+
+        # Take the input NDData instance and combine it's meta with the WCS,
+        # prioritising the WCS header.
+        meta = {**new_data_object.meta, **wcs_header}
+
+        # If original_data_object is None then we have a function which expects
+        # the input to be a SunPy map, so we take the input NDData and return a
+        # Map.
+        if original_data_object is None:
+            return cls(new_data_object.data, meta, mask=new_data_object.mask,
+                       unit=new_data_object.unit, uncertainty=new_data_object.uncertainty)
+
+        # If original_data_object is not None, then we passed a SunPy map to a
+        # function which returns some other NDData subclass, and we want to
+        # reconstruct a Map instance.
+        from sunpy.map import Map
+
+        # Combine the header with the original object.
+        meta = {**original_data_object.meta, **meta}
+        new_map = Map(new_data_object.data, meta)
+        new_map.mask = new_data_object.mask
+        new_map.uncertainty = new_data_object.uncertainty
+
+        return new_map
+
     def __getitem__(self, key):
         """ This should allow indexing by physical coordinate """
         raise NotImplementedError(
