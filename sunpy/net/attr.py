@@ -106,11 +106,11 @@ class AttrMeta(type):
         """
         class_name = self.__name__
         attrs = self._attr_registry[self]
-        names = [x for _, x in sorted(zip(attrs.name, attrs.name), key=lambda pair: pair[0])]
-        clients = [x for _, x in sorted(zip(attrs.name, attrs.client), key=lambda pair: pair[0])]
-        names_long = [x for _, x in sorted(
+        names = [str(x) for _, x in sorted(zip(attrs.name, attrs.name), key=lambda pair: pair[0])]
+        clients = [str(x) for _, x in sorted(zip(attrs.name, attrs.client), key=lambda pair: pair[0])]
+        names_long = [str(x) for _, x in sorted(
             zip(attrs.name, attrs.name_long), key=lambda pair: pair[0])]
-        descs = [x for _, x in sorted(zip(attrs.name, attrs.name_long), key=lambda pair: pair[0])]
+        descs = [str(x) for _, x in sorted(zip(attrs.name, attrs.desc), key=lambda pair: pair[0])]
         lines = []
         t = Table(names=["Attribute Name", "Client", "Full Name",
                          "Description"], dtype=[str, str, str, str])
@@ -168,7 +168,7 @@ class Attr(metaclass=AttrMeta):
         Parameters
         ----------
 
-        adcit : `dict`
+        adict : `dict`
             A dictionary that has keys of `~sunpy.net.attr.Attr`.
             Each key should have a list of tuples as it value.
             Each tuple should be a pair of strings.
@@ -200,7 +200,8 @@ class Attr(metaclass=AttrMeta):
                             raise ValueError(f'Invalid length (!=2) for values: {value}.')
                         else:
                             # Sanitize name, we remove all special characters and make it all lower case
-                            name = ''.join(char for char in pair[0] if char.isalnum()).lower()
+                            name = str(pair[0])
+                            name = ''.join(char for char in name if char.isalnum()).lower()
                             if keyword.iskeyword(name):
                                 # Attribute name has been appended with `_`
                                 # to make it a valid identifier since its a python keyword.
