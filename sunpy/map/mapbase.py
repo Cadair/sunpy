@@ -1364,8 +1364,9 @@ class GenericMap(NDData):
 
         return new_map
 
-    @deprecate_positional_args_since(since='2.0')
-    def submap(self, bottom_left, *, top_right=None, width: u.deg=None, height: u.deg=None):
+    @deprecate_positional_args_since(since='2.0', positional_only=('width', 'height'))
+    @u.quantity_input
+    def submap(self, bottom_left, *, top_right=None, width: (u.deg, u.pix)=None, height: (u.deg, u.pix)=None):
         """
         Returns a submap defined by a rectangle.
 
@@ -1380,9 +1381,9 @@ class GenericMap(NDData):
             The top-right coordinate of the rectangle.
             Passing this as a positional argument is deprecated.
         width : `astropy.units.Quantity`
-            The width of the rectangle. Passing this as a positional argument is deprecated.
+            The width of the rectangle.
         height : `astropy.units.Quantity`
-            The height of the rectangle. Passing this as a positional argument is deprecated.
+            The height of the rectangle.
 
         Returns
         -------
@@ -1503,17 +1504,10 @@ class GenericMap(NDData):
             [249.99167, 265.14267, 274.61206, 240.5223 ]], dtype=float32)
         """
         if not isinstance(bottom_left, u.Quantity):
-
-            if isinstance(top_right, u.Quantity) and isinstance(width, u.Quantity):
-                # The decorator assigns the first positional arg to top_right and so on.
-                height = width
-                width = top_right
-                top_right = None
-
             bottom_left, top_right = get_rectangle_coordinates(bottom_left,
-                                                            top_right=top_right,
-                                                            width=width,
-                                                            height=height)
+                                                               top_right=top_right,
+                                                               width=width,
+                                                               height=height)
 
             bottom_left = u.Quantity(self._get_lon_lat(bottom_left))
             top_right = u.Quantity(self._get_lon_lat(top_right))
@@ -1774,12 +1768,10 @@ class GenericMap(NDData):
 
         Parameters
         ----------
-        bottom_left : `astropy.units.Quantity` or `~astropy.coordinates.SkyCoord`
-            The bottom-left coordinate of the rectangle. If a `SkyCoord` it can
-            have shape ``(2,)`` to simultaneously define ``top_right``. If specifying
-            pixel coordinates it must be given as an `~astropy.units.Quantity`
-            object with units of `~astropy.units.pixel`.
-        top_right : `astropy.units.Quantity` or `~astropy.coordinates.SkyCoord`
+        bottom_left : `~astropy.coordinates.SkyCoord`
+            The bottom-left coordinate of the rectangle. It can
+            have shape ``(2,)`` to simultaneously define ``top_right``.
+        top_right : `~astropy.coordinates.SkyCoord`
             The top-right coordinate of the rectangle.
             Passing this as a positional argument is deprecated.
         width : `astropy.units.Quantity`
@@ -1792,7 +1784,6 @@ class GenericMap(NDData):
 
         Returns
         -------
-
         rect : `list`
             A list containing the `~matplotlib.patches.Rectangle` object, after
             it has been added to ``axes``.
@@ -1809,9 +1800,9 @@ class GenericMap(NDData):
             top_right = None
 
         bottom_left, top_right = get_rectangle_coordinates(bottom_left,
-                                                            top_right=top_right,
-                                                            width=width,
-                                                            height=height)
+                                                           top_right=top_right,
+                                                           width=width,
+                                                           height=height)
 
         width = Longitude(top_right.spherical.lon - bottom_left.spherical.lon)
         height = Latitude(top_right.spherical.lat - bottom_left.spherical.lat)
