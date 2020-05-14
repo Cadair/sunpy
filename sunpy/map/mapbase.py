@@ -466,8 +466,7 @@ class GenericMap(NDData):
         # need to do this only based on .meta.
         ctypes = {c[:4] for c in w2.wcs.ctype}
         # Check that the ctypes contains one of these three pairs of axes.
-        if ({'HPLN', 'HPLT'} <= ctypes or {'SOLX', 'SOLY'} <= ctypes or {'CRLN', 'CRLT'} <= ctypes):
-            w2.heliographic_observer = self.observer_coordinate
+        w2.observer_coordinate = self.observer_coordinate
 
         # Validate the WCS here.
         w2.wcs.set()
@@ -814,16 +813,14 @@ class GenericMap(NDData):
                     return SkyCoord(hgs, observer=hgs)
 
                 return sc.heliographic_stonyhurst
+
             elif any(meta_list) and not set(keys).isdisjoint(self.meta.keys()):
                 if not isinstance(kwargs['frame'], str):
                     kwargs['frame'] = kwargs['frame'].name
                 missing_meta[kwargs['frame']] = set(keys).difference(self.meta.keys())
 
-        warning_message = "".join([f"For frame '{frame}' the following metadata is missing: {','.join(keys)}\n" for frame, keys in missing_meta.items()])
-        warning_message = "Missing metadata for observer: assuming Earth-based observer.\n" + warning_message
-        warnings.warn(warning_message, SunpyUserWarning)
-
-        return get_earth(self.date)
+                warning_message = "".join([f"For frame '{frame}' the following metadata is missing: {','.join(keys)}\n" for frame, keys in missing_meta.items()])
+                warnings.warn(warning_message, SunpyUserWarning)
 
     @property
     def heliographic_latitude(self):

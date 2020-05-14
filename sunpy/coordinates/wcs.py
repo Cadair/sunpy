@@ -20,6 +20,9 @@ class SolarWCS(WCS):
 
     @observer_coordinate.setter
     def _set_observer(self, observer):
+        if observer is None:
+            return
+
         if isinstance(observer, EarthLocation):
             observer = observer.to_itrs(self.wcs.dateobs)
 
