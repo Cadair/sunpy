@@ -251,7 +251,7 @@ If the hashes do not match, the figure has changed, and thus the test is conside
 To run the figure tests you need to be very careful, as any pixel that has changed, will change the hash.
 In order to avoid changes due to different package versions, we recommend using tox::
 
-    $ tox -e figure
+    $ tox -e py38-figure
 
 This will ensure that any figures created are checked using the package versions that were used to create the original figure hashes.
 Running this will create a folder, "figure_test_images", within your work folder ("<local clone location>/figure_test_images"), which is ignored by git.

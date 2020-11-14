@@ -1,8 +1,9 @@
-import pytest
+import importlib
+
 from pkg_resources import get_distribution
 
 
-def find_missing_dependancies(package="sunpy", extras=None):
+def find_missing_dependencies(package="sunpy", extras=None):
     """
     List missing dependancies.
 
@@ -25,7 +26,7 @@ def find_missing_dependancies(package="sunpy", extras=None):
     return missing_requirements
 
 
-def missing_dependancies_by_extra(package="sunpy", exclude_extras=None):
+def missing_dependencies_by_extra(package="sunpy", exclude_extras=None):
     """
     Get all the specified extras for a package and report any missing dependencies.
 
@@ -37,11 +38,11 @@ def missing_dependancies_by_extra(package="sunpy", exclude_extras=None):
     distribution = get_distribution(package)
     extras = distribution.extras
 
-    missing_dependancies = {"required": find_missing_dependancies(package)}
+    missing_dependancies = {"required": find_missing_dependencies(package)}
     for extra in extras:
         if extra in exclude_extras:
             continue
-        missing_dependancies[extra] = find_missing_dependancies(package, (extra,))
+        missing_dependancies[extra] = find_missing_dependencies(package, (extra,))
 
     return missing_dependancies
 
@@ -60,19 +61,39 @@ def print_missing_dependancies_report(missing, package="sunpy"):
             continue
 
         printed = True
-        print(f"The following packages are not installed for the {package}[{extra_name}] requirement:")
+        print(
+            f"The following packages are not installed for the {package}[{extra_name}] requirement:")
         for dep in dependancies:
             print(f"  * {dep}")
 
     return printed
 
 
-def self_test(*, online=False):
+def _self_test_args(*, package=None, online=False, online_only=False, figure_only=False):
+    args = ["-W", "ignore"]
+    if online:
+        args.append("--remote-data=any")
+    if online_only:
+        args.append("--remote-data=any -m remote_data")
+    if package:
+        try:
+            importlib.import_module(f"sunpy.{package}")
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError(f"sunpy.{package} was not found.")
+        args.extend(["--pyargs", f"sunpy.{package}"])
+    else:
+        args.extend(["--pyargs", "sunpy"])
+    if figure_only:
+        args.extend(["-m", "mpl_image_compare"])
+    return args
+
+
+def self_test(*, package=None, online=False, online_only=False, figure_only=False):
     print("\n\n")
     print("Starting sunpy self test...")
     print("Checking for installed packages:")
 
-    missing = missing_dependancies_by_extra(exclude_extras=("dev", "all", "docs"))
+    missing = missing_dependencies_by_extra(exclude_extras=("dev", "all", "docs"))
     test_missing = missing.pop("tests")
     printed = print_missing_dependancies_report(missing)
 
@@ -81,13 +102,14 @@ def self_test(*, online=False):
 
     if test_missing:
         print("You do not have all the required dependancies installed to run the sunpy test suite.")
-        print("If you want to run the sunpy tests install the 'tests' extra with `pip install sunpy[tests]`")
+        print(
+            "If you want to run the sunpy tests install the 'tests' extra with `pip install sunpy[all,tests]`")
         return
+
+    import pytest
 
     print("Starting the sunpy test suite:")
     print()
-    args = ["--pyargs", "sunpy", "-W", "ignore"]
-    if online:
-        args.append("--remote-data=any")
-
+    args = _self_test_args(package=package, online=online,
+                           online_only=online_only, figure_only=figure_only)
     pytest.main(args)
