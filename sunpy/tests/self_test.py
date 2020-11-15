@@ -5,7 +5,7 @@ from pkg_resources import get_distribution
 
 def find_missing_dependencies(package="sunpy", extras=None):
     """
-    List missing dependancies.
+    List missing dependencies.
 
     Given a package and, optionally, a tuple of extras, identify any packages
     which should be installed to match the requirements and return any which are
@@ -38,16 +38,16 @@ def missing_dependencies_by_extra(package="sunpy", exclude_extras=None):
     distribution = get_distribution(package)
     extras = distribution.extras
 
-    missing_dependancies = {"required": find_missing_dependencies(package)}
+    missing_dependencies = {"required": find_missing_dependencies(package)}
     for extra in extras:
         if extra in exclude_extras:
             continue
-        missing_dependancies[extra] = find_missing_dependencies(package, (extra,))
+        missing_dependencies[extra] = find_missing_dependencies(package, (extra,))
 
-    return missing_dependancies
+    return missing_dependencies
 
 
-def print_missing_dependancies_report(missing, package="sunpy"):
+def print_missing_dependencies_report(missing, package="sunpy"):
     printed = False
     required_missing = missing.pop("required")
     if required_missing:
@@ -56,14 +56,14 @@ def print_missing_dependancies_report(missing, package="sunpy"):
         for dep in required_missing:
             print(f"* {dep}")
 
-    for extra_name, dependancies in missing.items():
-        if not dependancies:
+    for extra_name, dependencies in missing.items():
+        if not dependencies:
             continue
 
         printed = True
         print(
             f"The following packages are not installed for the {package}[{extra_name}] requirement:")
-        for dep in dependancies:
+        for dep in dependencies:
             print(f"  * {dep}")
 
     return printed
@@ -95,13 +95,13 @@ def self_test(*, package=None, online=False, online_only=False, figure_only=Fals
 
     missing = missing_dependencies_by_extra(exclude_extras=("dev", "all", "docs"))
     test_missing = missing.pop("tests")
-    printed = print_missing_dependancies_report(missing)
+    printed = print_missing_dependencies_report(missing)
 
     if not printed:
-        print("All required and optional sunpy dependancies are installed.")
+        print("All required and optional sunpy dependencies are installed.")
 
     if test_missing:
-        print("You do not have all the required dependancies installed to run the sunpy test suite.")
+        print("You do not have all the required dependencies installed to run the sunpy test suite.")
         print(
             "If you want to run the sunpy tests install the 'tests' extra with `pip install sunpy[all,tests]`")
         return
