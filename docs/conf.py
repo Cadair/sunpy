@@ -223,7 +223,7 @@ sphinx_gallery_conf = {
     # Comes from the theme.
     "default_thumb_file": os.path.join(html_static_path[0], "img", "sunpy_icon_128x128.png"),
     'abort_on_example_error': False,
-    'plot_gallery': 'True',
+    'plot_gallery': False,
     'remove_config_comments': True,
     'doc_module': ('sunpy'),
     'only_warn_on_example_error': True,
@@ -260,9 +260,13 @@ os.environ["JSOC_EMAIL"] = "jsoc@cadair.com"
 
 # -- Sphinx setup --------------------------------------------------------------
 
+from sphinx.util.docutils import SphinxDirective
+
+class MyDirective(SphinxDirective):
+    def run(self):
+        raise ValueError("It's a Trap")
+
 def setup(app):
     # Generate the stability page
     app.connect("source-read", rstjinja)
-    if is_release:
-        from sunpy.util.sphinx.changelog import DummyChangelog
-        app.add_directive('changelog', DummyChangelog, override=True)
+    app.add_directive('my', MyDirective)
