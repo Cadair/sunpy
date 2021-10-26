@@ -78,10 +78,10 @@ stages:
 
         envs:
           - macos: py37
-          - windows: py38
-          - linux: py37-oldestdeps
-          - linux: py38-conda
-            libraries: {}
+          #- windows: py38
+          #- linux: py37-oldestdeps
+          #- linux: py38-conda
+          #  libraries: {}
 
   - stage: SecondPhaseTestsAllowedFail
     displayName: Stage 2 Tests (Allowed Fail)
@@ -135,8 +135,8 @@ stages:
               - hdf5-devel
 
           envs:
-            - linux: py38-hypothesis
-            - linux: py38-devdeps
+            #- linux: py38-hypothesis
+            #- linux: py38-devdeps
             - linux: base_deps
 
   # On branches which aren't main, and not Pull Requests, build the wheels but only upload them on tags
@@ -174,8 +174,8 @@ stages:
     - stage: Release
       dependsOn:
         - SecondPhaseTests
-        - ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/') }}:
-          - ApprovalOfReleaseWithFailingTests
+        #- ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/') }}:
+        - ApprovalOfReleaseWithFailingTests
       jobs:
       - template: publish.yml@OpenAstronomy
         parameters:
