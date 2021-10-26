@@ -42,73 +42,82 @@ stages:
   - stage: FirstPhaseTests
     displayName: Core Tests
     jobs:
-    - template: run-tox-env.yml@OpenAstronomy
-      parameters:
-        default_python: '3.8'
-        submodules: false
-        coverage: codecov
-        toxdeps: tox-pypi-filter
-        posargs: -n=4
+      - job: pass
+        steps:
+          - script: exit 0
+    # - template: run-tox-env.yml@OpenAstronomy
+    #   parameters:
+    #     default_python: '3.8'
+    #     submodules: false
+    #     coverage: codecov
+    #     toxdeps: tox-pypi-filter
+    #     posargs: -n=4
 
-        libraries:
-          apt:
-            - libopenjp2-7
+    #     libraries:
+    #       apt:
+    #         - libopenjp2-7
 
-        envs:
-          - linux: py39
+    #     envs:
+    #       - linux: py39
 
   - stage: SecondPhaseTests
     displayName: Stage 2 Tests
     dependsOn: FirstPhaseTests
     jobs:
-    - template: run-tox-env.yml@OpenAstronomy
-      parameters:
-        default_python: '3.8'
-        submodules: false
-        coverage: codecov
-        toxdeps: tox-pypi-filter
-        posargs: -n=4
+      - job: pass
+        steps:
+          - script: exit 0
+    # - template: run-tox-env.yml@OpenAstronomy
+    #   parameters:
+    #     default_python: '3.8'
+    #     submodules: false
+    #     coverage: codecov
+    #     toxdeps: tox-pypi-filter
+    #     posargs: -n=4
 
-        libraries:
-          apt:
-            - libopenjp2-7
-            - graphviz
-          brew:
-            - openjpeg
+    #     libraries:
+    #       apt:
+    #         - libopenjp2-7
+    #         - graphviz
+    #       brew:
+    #         - openjpeg
 
-        envs:
-          - macos: py37
-          #- windows: py38
-          #- linux: py37-oldestdeps
-          #- linux: py38-conda
-          #  libraries: {}
+    #     envs:
+    #       - macos: py37
+    #       #- windows: py38
+    #       #- linux: py37-oldestdeps
+    #       #- linux: py38-conda
+    #       #  libraries: {}
 
   - stage: SecondPhaseTestsAllowedFail
     displayName: Stage 2 Tests (Allowed Fail)
     dependsOn: FirstPhaseTests
     jobs:
-    - template: run-tox-env.yml@OpenAstronomy
-      parameters:
-        default_python: '3.8'
-        submodules: false
-        coverage: codecov
-        toxdeps: tox-pypi-filter
-        posargs: -n=4
+      - job: fail
+        steps:
+          - script: exit 1
+    #- template: run-tox-env.yml@OpenAstronomy
+    #  parameters:
+    #    default_python: '3.8'
+    #    submodules: false
+    #    coverage: codecov
+    #    toxdeps: tox-pypi-filter
+    #    posargs: -n=4
 
-        libraries:
-          apt:
-            - libopenjp2-7
-            - graphviz
-          brew:
-            - openjpeg
+    #    libraries:
+    #      apt:
+    #        - libopenjp2-7
+    #        - graphviz
+    #      brew:
+    #        - openjpeg
 
-        envs:
-          - linux: build_docs
-            name: build_docs
-            posargs: " "
-            pytest: false
-          - linux: py38-online
-            name: py38_online
+    #    envs:
+    #      - linux: build_docs
+    #        name: build_docs
+    #        posargs: " "
+    #        pytest: false
+    #      - linux: py38-online
+    #        name: py38_online
 
 
   - ${{ if or(eq(variables['Build.Reason'], 'Schedule'), eq(variables['Build.Reason'], 'Manual')) }}:
