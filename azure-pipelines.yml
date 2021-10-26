@@ -151,15 +151,9 @@ stages:
       dependsOn: SecondPhaseTestsAllowedFail
       condition: always()
       jobs:
-      # We always need to specify a job, so always run a do nothing.
-      - job: skipping
-        pool: server
-        displayName: Manual approval not required
-        steps:
-          - task: Delay@1
       - job: waitForValidation
         displayName: Approve release with failing tests
-        condition: failed()
+        condition: in(dependencies.SecondPhaseTestsAllowedFail.result, 'Skipped', 'Failed', 'Canceled')
         pool: server
         timeoutInMinutes: 4320 # job times out in 3 days
         steps:
