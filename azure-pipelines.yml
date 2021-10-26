@@ -158,11 +158,10 @@ stages:
     - stage: ApprovalOfReleaseWithFailingTests
       displayName: Approve Release
       dependsOn: SecondPhaseTestsAllowedFail
-      condition: always()
+      condition: in(dependencies.SecondPhaseTestsAllowedFail.result, 'Skipped', 'Failed', 'Canceled')
       jobs:
       - job: waitForValidation
         displayName: Approve release with failing tests
-        condition: in(dependencies.SecondPhaseTestsAllowedFail.result, 'Skipped', 'Failed', 'Canceled')
         pool: server
         timeoutInMinutes: 4320 # job times out in 3 days
         steps:
