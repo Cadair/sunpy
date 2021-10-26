@@ -55,10 +55,6 @@ stages:
             - libopenjp2-7
 
         envs:
-          - linux: codestyle
-            name: style_check
-            pytest: false
-            libraries: {}
           - linux: py39
 
   - stage: SecondPhaseTests
@@ -149,36 +145,36 @@ stages:
     # any allowed fails are ok to continue the release.
     # Ideally this would happen right before the publish step, but I can't work
     # out how to make that happen.
-    - stage: ApprovalOfReleaseWithFailingTests
-      displayName: Approve Release with Failing Tests
-      dependsOn: SecondPhaseTestsAllowedFail
-      condition: always()
-      jobs:
-      # We always need to specify a job, so always run a do nothing.
-      #- ${{ if not(startsWith(variables['Build.SourceBranch'], 'refs/tags/')) }}:
-      - job: skipping
-        displayName: Manual approval not required
-        steps:
-          - checkout: none
-      #- ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/') }}:
-      - job: waitForValidation
-        displayName: Wait for external validation
-        condition: failed()
-        pool: server
-        timeoutInMinutes: 4320 # job times out in 3 days
-        steps:
-        - task: ManualValidation@0
-          timeoutInMinutes: 1440 # task times out in 1 day
-          inputs:
-            instructions: |
-              Please check that the fails in these jobs are the result of online server failures
-              and that the release can be published despite them.
-            onTimeout: 'reject'
+    - ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/') }}:
+      - stage: ApprovalOfReleaseWithFailingTests
+        displayName: Approve Release
+        dependsOn: SecondPhaseTestsAllowedFail
+        condition: always()
+        jobs:
+        # We always need to specify a job, so always run a do nothing.
+        - job: skipping
+          displayName: Manual approval not required
+          steps:
+            - checkout: none
+        - job: waitForValidation
+          displayName: Approve release with failing tests
+          condition: failed()
+          pool: server
+          timeoutInMinutes: 4320 # job times out in 3 days
+          steps:
+          - task: ManualValidation@0
+            timeoutInMinutes: 1440 # task times out in 1 day
+            inputs:
+              instructions: |
+                Please check that the fails in these jobs are the result of online server failures
+                and that the release can be published despite them.
+              onTimeout: 'reject'
 
     - stage: Release
       dependsOn:
         - SecondPhaseTests
-        - ApprovalOfReleaseWithFailingTests
+        - ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/') }}:
+          - ApprovalOfReleaseWithFailingTests
       jobs:
       - template: publish.yml@OpenAstronomy
         parameters:
