@@ -153,9 +153,10 @@ stages:
       jobs:
       # We always need to specify a job, so always run a do nothing.
       - job: skipping
+        pool: server
         displayName: Manual approval not required
         steps:
-          - checkout: none
+          - task: Delay@1
       - job: waitForValidation
         displayName: Approve release with failing tests
         condition: failed()
