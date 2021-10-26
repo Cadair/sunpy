@@ -93,9 +93,9 @@ stages:
     displayName: Stage 2 Tests (Allowed Fail)
     dependsOn: FirstPhaseTests
     jobs:
-      - job: fail
+      - job: pass
         steps:
-          - script: exit 1
+          - script: exit 0
     #- template: run-tox-env.yml@OpenAstronomy
     #  parameters:
     #    default_python: '3.8'
