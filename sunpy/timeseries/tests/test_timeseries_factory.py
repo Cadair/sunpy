@@ -443,5 +443,5 @@ def test_validate_meta_astropy_header():
     assert sunpy.timeseries.TimeSeries._is_metadata(header)
 
 def test_get_matching_widget():
-    with pytest.raises(NoMatchError, match=""):
+    with pytest.raises(NoMatchError, match="failed to validate"):
         sunpy.timeseries.TimeSeries(hsi_filepath)
