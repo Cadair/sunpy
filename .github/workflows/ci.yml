@@ -70,6 +70,7 @@ jobs:
         - windows: py313
         - macos: py313
         - linux: py312-oldestdeps
+          toxdeps: tox-uv tox-pypi-filter pip
 
   docs:
     needs: [core]
